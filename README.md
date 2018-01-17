@@ -1,6 +1,8 @@
+<img src="images/jads_logo.png" width="425"/> <img src="images/kaggle_logo.png" width="425"/>
+
 # Kaggle at JADS
 
-Contains our group's work in various kaggle competitions.
+This repository contains our group's work in various kaggle competitions.
 Information for each of them can be found in its respective directory.
 
 ### Contributors ###
