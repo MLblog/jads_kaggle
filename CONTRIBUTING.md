@@ -23,12 +23,19 @@ by other contributors after pulling, thus breaking their local copy. In order to
 Here are the necessary steps on a windows machine:
 
 1. Make sure you have a relatively clean <a href="https://www.anaconda.com/download/#windows">Anaconda 3.6 installation</a>.
-2. Create a new [virtual environment](https://virtualenv.pypa.io/en/stable/): `pip install virtualenv; virtualenv kaggle_env;` 
-3. Activate the newly created environment
-	- Linux: `source kaggle_env/bin/activate`
-	- Windows: `. kaggle_env/Scripts/activate`
-4. Install the project's dependencies using `pip install -r requirements.txt`
-5. In case your changes required the installation of extra packages remember to update the `requirements.txt` file: `pip freeze > requirements.txt`. This way others can install them as well
+2. Create a new [conda virtual environment](https://conda.io/docs/user-guide/tasks/manage-environments.html): `conda create --name kaggle_env --file requirements.txt;` 
+3. Activate the newly created environment: `source activate kaggle_env`
+4. In case you are using an IDE like Pycharm or Spyder, make sure it uses your conda environment as the project interpreter.
+	- Your environment will be by default located at: `<Anaconda Home>/envs/kaggle_env/python.exe`
+	- Default location for `Anaconda Home> on Windows is `C:\Users\<username>\AppData\Local\Continuum\anaconda3\`
+5. In case your changes required the installation of extra packages remember to update the `requirements.txt` file: `conda list --explicit > requirements.txt`. 
+   This way others can install them with `conda install --file requirements.txt`
 
+6. You can leave the virtual enviroment at any time using `source deactivate`
 
 **Thanks and let's learn as much as possible together!**
+
+## Task 0 - Getting comfortable with pull requests ##
+
+In order to test your understanding of the proposed process you can try a rather minimal contribution:
+Follow the guidelines provided above and make a pull request to add your name in the contributors list found in `README.md`
