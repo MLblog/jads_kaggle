@@ -1,10 +1,8 @@
 language: python
 
-
 matrix:
   include:
     - python: '3.6'
 
-
-install: pip install pep8
-script: pep8
+install: pip install flake8
+script: flake8
