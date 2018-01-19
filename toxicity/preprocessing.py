@@ -20,7 +20,7 @@ def tf_idf(train, test, params=None):
             "ngram_range": (1, 2),
             "tokenizer": tokenizer,
             "min_df": 3,
-            "max_df": 9,
+            "max_df": 0.9,
             "strip_accents": 'unicode',
             "use_idf": 1,
             "smooth_idf": 1,
