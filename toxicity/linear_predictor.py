@@ -1,8 +1,8 @@
 import numpy as np
+
 from sklearn.linear_model import LogisticRegression
 
-from .predictor import Predictor
-from .preprocessing import *
+from predictor import Predictor
 
 
 class LogisticPredictor(Predictor):
@@ -12,38 +12,30 @@ class LogisticPredictor(Predictor):
     """
     def __init__(self, params={}, name='Logistic Regression Predictor'):
         super().__init__(params, name)
-        self.set_model(LogisticRegression(**params))
-        self.r = {}
+        self.model = LogisticRegression(**params)
+        self.r = None
 
-    def fit(self, train):
+    def fit(self, train_x, train_y):
+        """
+        A function that fits the predictor to the provided dataset
 
-        def pr(x, y_i, y):
-            p = x[y == y_i].sum(0)
-            return (p + 1) / ((y == y_i).sum() + 1)
+        :param train_x Contains the input features
+        :param train_y Contains the dependent tag values
+        """
+        def pr(y_i):
+            p = train_x[train_y == y_i].sum(0)
+            return (p + 1) / ((train_y == y_i).sum() + 1)
 
-        train_x = train.drop(self.tags, axis=1)
-        for i, tag in enumerate(self.tags):
-            train_y = train[tag].values
-            self.r[tag] = np.log(pr(1, train_y) / pr(0, train_y))
-            self.model[tag].fit(train_x.multiply(self.r[tag]), train_y)
+        self.r = np.log(pr(1) / pr(0))
+        nb = train_x.multiply(self.r)
+        self.model.fit(nb, train_y)
 
     def predict(self, test_x):
-        predictions = np.zeros((len(test_x), len(self.tags)))
-        for i, tag in enumerate(self.tags):
-            predictions[:, i] = self.model[tag].predict_proba(test_x.multiply(self.r[tag]))[:, 1]
+        """
+        Predicts the label for the given input
 
-        return predictions
-
-if __name__ == "__main__":
-    train = pd.read_csv("data/train.csv")
-    test = pd.read_csv("data/test.csv")
-
-    # Preprocess raw text data
-    train, test = tf_idf(train, test)
-
-    lr_params = {"C": 4, "dual": True}
-    predictor = LogisticPredictor(**lr_params)
-
-    print("Begin Training " + predictor.name)
-    predictor.fit(train)
-    predictor.create_submission(test, write_to="submissions/lr_submissions.csv")
+        :param test_x: a pd.DataFrame of features to be used for predictions
+        :return: The predicted labels
+        """
+        m = test_x.multiply(self.r)
+        return self.model.predict_proba(m)[:, 1]

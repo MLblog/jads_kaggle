@@ -12,7 +12,8 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
 1. <a href="https://github.com/MLblog/jads_kaggle/fork">Fork the repository</a>
 2. Clone your fork: `git clone https://github.com/<YOUR_GITHUB_USERNAME>/jads_kaggle.git`
 3. Create a new branch based on `master`: `git checkout -b my-feature master`. The branch name should explain what functionality it is supposed to add or modify.
-4. Setup your virtual Python enviroment using the latest `anaconda` version (currently `3.6`). Check the [Notes](#notes-on-process) below if you feel uncomfortable with this step. Make sure you activate the environment everytime you start working on the project.
+4. Setup your virtual Python enviroment using the latest `anaconda` version (currently `3.6`). Check the [Notes](#setting-up-a-virtual-environment) for how do to that.
+   Make sure you activate the environment everytime you start working on the project.
 5. Implement your changes.
 6. Check that everything is OK in your branch:
    - Check it for PEP8: `flake8 <path_to_source_folder/>`.
@@ -24,7 +25,7 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
    - Any other useful information: links to other related Github or mailing list issues and discussions, benchmark graphs, academic papers…
 
    
-# Notes on Process
+# Setting up a Virtual Environment
 
 It is very important to make sure we all use the same development environment in order to manage dependencies without conflicts. For example if contributor A pushes a new classifier using some libraries installed on his local machine, then the dependencies will not be met by other contributors after pulling, thus breaking their local copy. In order to ensure an isolated environment we will use `virtualenv`s. 
 Here are the necessary steps to create and activate one on a windows machine:
