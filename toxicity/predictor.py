@@ -1,8 +1,9 @@
 from abc import abstractmethod, ABCMeta
 import numpy as np
 from sklearn.metrics import log_loss
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+
+from utils import timing, TAGS
 
 TUNING_OUTPUT_DEFAULT = 'tuning.txt'
 RANDOM_STATE = 42  # Used for reproducible results
@@ -33,6 +34,10 @@ class Predictor(object):
     def set_params(self, params):
         """Override parameters set in the constructor. Dictionary expected"""
         self.params = params
+
+    def get_params(self):
+        """Return the current model parameters dictionary"""
+        return self.params
 
     @abstractmethod
     def fit(self, train_x, train_y):
@@ -73,20 +78,23 @@ class Predictor(object):
 
         return grid.best_params_, grid.best_score_
 
-    def evaluate(self, x, y, val_size=0.3):
+    @timing
+    def evaluate(self, x, ys, val_size=0.3):
         """
         Evaluate performance based on a train-test split.
 
         :param x: Input features to be used for fitting
         :param y: Values for the tag to be predicted
         :param val_size: Ratio of the training set to be used as validation
-        :return: The average log loss error across all toxic tags
+        :return: The average log loss error across all tags
         """
-        train_x, val_x, train_y, val_y = train_test_split(x, y, test_size=val_size, random_state=RANDOM_STATE)
-
-        self.model.fit(train_x, train_y)
-        predictions = self.model.predict_proba(val_x)[:, 1]
-        return log_loss(val_y, predictions)
+        losses = []
+        for tag in TAGS:
+            train_x, val_x, train_y, val_y = train_test_split(x, ys[tag], test_size=val_size, random_state=RANDOM_STATE)
+            self.model.fit(train_x, train_y)
+            predictions = self.model.predict_proba(val_x)[:, 1]
+            losses.append(log_loss(val_y, predictions))
+        return np.mean(losses)
 
 
 class DummyPredictor(Predictor):
