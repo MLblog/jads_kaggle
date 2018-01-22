@@ -31,9 +31,9 @@ def timing(f):
     :param f: Callable to be timed
     :return: Void. Prints to std:out as a side effect
     """
-    def wrap(*args):
+    def wrap(*args, **kwargs):
         start = time.time()
-        ret = f(*args)
+        ret = f(*args, **kwargs)
         stop = time.time()
         print('{} function took {:.1f} seconds to complete\n'.format(f.__name__, (stop - start)))
         return ret

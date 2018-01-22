@@ -6,6 +6,22 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from utils import timing
 
 
+def check_compatibility(f):
+    """
+    Decorator to assert that a preprocessing function returns compatible train and test sets.
+    Specifically it asserts than the number of columns is equal for both sets.
+
+    :param f: The preprocessing function
+    :return: The preprocessed train and test sets
+    """
+    def wrap(*args):
+        train, test = f(*args)
+        assert(train.shape[1] == test.shape[1])
+        return train, test
+    return wrap
+
+
+@check_compatibility
 @timing
 def tf_idf(train, test, params=None):
     train["comment_text"].fillna("unknown", inplace=True)

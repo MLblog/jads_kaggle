@@ -10,12 +10,14 @@ class LogisticPredictor(Predictor):
     Adapted to our class design from the kernel:
     https://www.kaggle.com/jhoward/nb-svm-strong-linear-baseline-eda-0-052-lb
     """
-    def __init__(self, params={}, name='Logistic Regression Predictor'):
-        super().__init__(params, name)
-        self.model = LogisticRegression(**params)
+    def __init__(self, C, dual=True, name='Logistic Regression Predictor'): # noqa
+        super().__init__(name)
+        self.model = LogisticRegression(C=C, dual=dual)
+        self.C = C
+        self.dual = dual
         self.r = None
 
-    def fit(self, train_x, train_y):
+    def fit(self, train_x, train_y, **params):
         """
         A function that fits the predictor to the provided dataset
 
@@ -28,9 +30,9 @@ class LogisticPredictor(Predictor):
 
         self.r = np.log(pr(1) / pr(0))
         nb = train_x.multiply(self.r)
-        self.model.fit(nb, train_y)
+        self.model.fit(nb, train_y, **params)
 
-    def predict(self, test_x):
+    def predict_proba(self, test_x):
         """
         Predicts the label for the given input
 
@@ -39,3 +41,7 @@ class LogisticPredictor(Predictor):
         """
         m = test_x.multiply(self.r)
         return self.model.predict_proba(m)[:, 1]
+
+    def predict(self, test_x):
+        m = test_x.multiply(self.r)
+        return self.model.predict(m)
