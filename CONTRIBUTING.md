@@ -16,7 +16,7 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
    Make sure you activate the environment everytime you start working on the project.
 5. Implement your changes.
 6. Check that everything is OK in your branch:
-   - Check it for PEP8: `flake8 <path_to_source_folder/>`.
+   - Check it for PEP8 by running: `flake8`. This requires that a virtual environment containing the `flake8` library (like our `kaggle_env`) is activated.
    - Run unit tests if any: `pytest`.
 7. Add files, commit and push: `git add ... ; git commit -m "my commit message"; git push origin my-feature` where `origin` is your own fork.
 8. [Create a PR](https://help.github.com/articles/creating-a-pull-request/) on Github. Write a **clear description** for your PR, including all the context and relevant information, such as:
@@ -44,6 +44,21 @@ Here are the necessary steps to create and activate one on a windows machine:
 In order to test your understanding of the proposed process you can try a rather minimal contribution:
 Follow the guidelines provided above and make a pull request to add your name in the contributors list found in `README.md`
 
+# Pulling changes performed by others
+
+*As we are working on the project, others might be doing the same. In order to be able to benefit from their work we need a way to access it in our copy of the codebase, which is easy in Git using `git pull`.*
+
+
+Others are obviously submitting pull requests on the original repository, not in our fork. Our local copy is by default only connected with our own fork because this is where we cloned from. 
+Online repositories are called `remote`s and the default `remote` is called `origin`. Therefore if we now check the connected remotes by running `git remote -v`, we will only see our own fork named `origin`.
+In order to connect our local copy with the original remote as well, we can issue `git remote add base https://github.com/MLblog/jads_kaggle.git` where `base` is the name we select for this new `remote`.
+From now on everytime we want to `push` or `pull` changes we can do so by specifying the `remote` and branch. For example in order to get changes performed by others we can do: `git pull base master`.
+In order to `push` our branch called `my-feature` to our fork we can run `git push origin my-feature`. Please note that you don't have permission to `push` to `base` (try and see what happens), 
+instead you need to `push` into `origin` and submit a PR as explained above.
+
+# Resolving Conflicts
+
+*ToDo*
 
 ## Learning Resources
 The aforementioned process assumes a basic understanding of certain software tools. The list below will serve as a reference for present and future contributors of the project.
@@ -53,7 +68,7 @@ The aforementioned process assumes a basic understanding of certain software too
     - [Branching](https://guides.github.com/introduction/flow/)
     - [Forking](https://guides.github.com/activities/forking/)
     - [Cheat sheet](https://services.github.com/on-demand/downloads/github-git-cheat-sheet.pdf)
-    - [Udacity Course](https://eu.udacity.com/course/how-to-use-git-and-github--ud775) (in case you want a deeper understanding)
+    - [Udacity Course](https://eu.udacity.com/course/how-to-use-git-and-github--ud775) (in case you want a deeper understanding - strongly recommended)
 
 2. Virtual Environments
     - [Managing environments in Anaconda](https://conda.io/docs/user-guide/getting-started.html#managing-envs)
