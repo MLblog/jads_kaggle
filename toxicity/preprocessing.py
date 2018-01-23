@@ -79,5 +79,3 @@ if __name__ == "__main__":
 
     train, test = remove_numbers(train, test)
     train, test = tf_idf(train, test, debug=True)
-    print(train.shape)
-    print(test.shape)
