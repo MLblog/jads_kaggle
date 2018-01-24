@@ -165,5 +165,3 @@ class Predictor(BaseEstimator, ClassifierMixin):
             return np.mean(losses)
 
         raise ValueError("Method must be either 'stratified_CV', 'CV' or 'split', not {}".format(method))
-
-
