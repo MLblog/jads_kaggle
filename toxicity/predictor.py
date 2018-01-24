@@ -1,7 +1,8 @@
 from abc import abstractmethod
 import numpy as np
+from collections import Counter
 from sklearn.metrics import log_loss, make_scorer
-from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score, StratifiedShuffleSplit
 from sklearn.base import BaseEstimator, ClassifierMixin
 
 from utils import timing, TAGS
@@ -36,8 +37,8 @@ class Predictor(BaseEstimator, ClassifierMixin):
         A function that fits the predictor to the provided dataset
         """
 
-    def score(self, train_x, train_y, sample_weight=None):
-        return log_loss(train_y, self.predict_proba(train_x))
+    def score(self, x, y, sample_weight=None):
+        return log_loss(y, self.predict_proba(x))
 
     @abstractmethod
     def predict(self, test_x):
@@ -84,8 +85,54 @@ class Predictor(BaseEstimator, ClassifierMixin):
 
         return grid.best_params_, grid.best_score_
 
+    def _stratified_cv(self, x, ys, nfolds):
+        # In order to use stratified CV we transform the multi-label problem into a single label, multi-class one.
+        # This is achieved by converting each label set to a single label, using bin -> dec conversion.
+        def convert_label(label):
+            """
+            Translates a set of labels into a single label using binary to decimal conversion
+            """
+            mul = [2 ** i for i in range(0, len(TAGS))]
+            return np.dot(mul, label)
+
+        def delete(arr, indices):
+            """
+            Delete rows from a sparse matrix by index
+            """
+            mask = np.ones(arr.shape[0], dtype=bool)
+            mask[indices] = False
+            return arr[mask]
+
+        # Multi label to single label
+        ys = np.array([ys[i] for i in TAGS]).T
+        y = np.apply_along_axis(convert_label, 1, ys)
+
+        # Remove rare labels
+        c = Counter(y)
+        bad_indices = []
+        for i, label in enumerate(y):
+            if c[label] < 5:
+                bad_indices.append(i)
+        x = delete(x, bad_indices)
+        y = delete(y, bad_indices)
+
+        splitter = StratifiedShuffleSplit(n_splits=nfolds, random_state=RANDOM_STATE)
+        scores = []
+        for train_index, val_index in splitter.split(x, y):
+            train_x, val_x = x[train_index], x[val_index]
+            train_ys, val_ys = ys[train_index, :], ys[val_index, :]
+
+            losses = []
+            for tag in range(0, len(TAGS)):
+                self.fit(train_x, train_ys[:, tag])
+                predictions = self.predict_proba(val_x)
+                losses.append(log_loss(val_ys[:, tag], predictions))
+            scores.append(np.mean(losses))
+
+        return np.mean(scores)
+
     @timing
-    def evaluate(self, x, ys, method="CV", nfolds=5, val_size=0.3):
+    def evaluate(self, x, ys, method="CV", nfolds=3, val_size=0.3):
         """
         Evaluate performance of the predictor. The default method `CV` is a lot more robust, however it is also a lot slower
         since it goes through `nfolds * len(TAGS)` iterations. The `split` method is based on a train-test split which makes it a lot faster.
@@ -97,8 +144,11 @@ class Predictor(BaseEstimator, ClassifierMixin):
         :param val_size: Ratio of the training set to be used as validation in case split is the evaluation method. Ignored otherwise
         :return: The average log loss error across all tags
         """
-        losses = []
         print("Using {} evaluation method across all tags...".format(method))
+        if method == 'stratified_CV':
+            return self._stratified_cv(x, ys, nfolds)
+
+        losses = []
         if method == 'CV':
             for tag in TAGS:
                 print("Evaluating tag {}".format(tag))
@@ -109,9 +159,11 @@ class Predictor(BaseEstimator, ClassifierMixin):
         if method == 'split':
             for tag in TAGS:
                 train_x, val_x, train_y, val_y = train_test_split(x, ys[tag], test_size=val_size, random_state=RANDOM_STATE)
-                self.model.fit(train_x, train_y)
-                predictions = self.model.predict_proba(val_x)[:, 1]
+                self.fit(train_x, train_y)
+                predictions = self.predict_proba(val_x)
                 losses.append(log_loss(val_y, predictions))
             return np.mean(losses)
 
-        raise ValueError("Method must be either 'CV' or 'split', not {}".format(method))
+        raise ValueError("Method must be either 'stratified_CV', 'CV' or 'split', not {}".format(method))
+
+
