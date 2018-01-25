@@ -2,22 +2,28 @@ import pandas as pd
 from nltk.corpus import stopwords
 import string
 
-# settings
+# settings. This requires running `nltk.download("stopwords")`
 eng_stopwords = set(stopwords.words("english"))
+
+# Input dataframes are assumed to contain plain text in this column
+TEXT_COLUMN = "comment_text"
 
 
 class FeatureAdded(object):
     def __init__(self, upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False,
                  stopwords=False, question_or_exclamation=False):
-        self.upper_case = upper_case
-        self.word_count = word_count
-        self.unique_words_count = unique_words_count
-        self.letter_count = letter_count
-        self.punctuation_count = punctuation_count
-        self.little_case = little_case
-        self.stopwords = stopwords
-        self.question_or_exclamation = question_or_exclamation
+
+        self.features = {
+            self._upper: upper_case,
+            self._count_words: word_count,
+            self._unique_words: unique_words_count,
+            self._count_letters: letter_count,
+            self._count_punctuation: punctuation_count,
+            self._count_little_case: little_case,
+            self._count_stopwords: stopwords,
+            self._question_or_exclamation: question_or_exclamation
+        }
 
     @staticmethod
     def _upper(df):
@@ -26,7 +32,7 @@ class FeatureAdded(object):
 
     Parameters
     -------------------------
-    df: Pandas Dataframe
+    df: Pandas Dataframe. Assumed to contain
 
     Returns
     --------------------------
@@ -36,7 +42,7 @@ class FeatureAdded(object):
         >>>_upper('Mimis is such a GOOD BOY!!!')
         3
         """
-        df["count_words_upper"] = df["comment_text"].apply(lambda x: len([w for w in str(x).split() if w.isupper()]))
+        df["count_words_upper"] = df[TEXT_COLUMN].apply(lambda x: len([w for w in str(x).split() if w.isupper()]))
         return df
 
     @staticmethod
@@ -56,7 +62,7 @@ class FeatureAdded(object):
         >>>_count_words('Mimis is such a GOOD BOY!!!')
         6
         """
-        df['count_word'] = df["comment_text"].apply(lambda x: len(str(x).split()))
+        df['count_word'] = df[TEXT_COLUMN].apply(lambda x: len(str(x).split()))
         return df
 
     @staticmethod
@@ -77,7 +83,7 @@ class FeatureAdded(object):
         7
         """
 
-        df['count_unique_word'] = df["comment_text"].apply(lambda x: len(set(str(x).split())))
+        df['count_unique_word'] = df[TEXT_COLUMN].apply(lambda x: len(set(str(x).split())))
         return df
 
     @staticmethod
@@ -97,7 +103,7 @@ class FeatureAdded(object):
         >>>_count_letters('Mimis is such a GOOD BOY!!!')
         27
         """
-        df['count_letters'] = df["comment_text"].apply(lambda x: len(str(x)))
+        df['count_letters'] = df[TEXT_COLUMN].apply(lambda x: len(str(x)))
         return df
 
     @staticmethod
@@ -117,7 +123,7 @@ class FeatureAdded(object):
     >>>_count_punctuation('Mimis is such a GOOD BOY!!!')
     3
     """
-        df["count_punctuations"] = df["comment_text"].apply(
+        df["count_punctuations"] = df[TEXT_COLUMN].apply(
             lambda x: len([c for c in str(x) if c in string.punctuation]))
         return df
 
@@ -138,7 +144,7 @@ class FeatureAdded(object):
     >>>_count_little_case('Mimis is such a GOOD BOY!!!')
     2
     """
-        df["count_words_title"] = df["comment_text"].apply(lambda x: len([w for w in str(x).split() if w.islower()]))
+        df["count_words_title"] = df[TEXT_COLUMN].apply(lambda x: len([w for w in str(x).split() if w.islower()]))
         return df
 
     @staticmethod
@@ -158,7 +164,7 @@ class FeatureAdded(object):
     >>>_count_stopwords('Mimis is such a GOOD BOY!!!')
     3
         """
-        df["count_stopwords"] = df["comment_text"].apply(
+        df["count_stopwords"] = df[TEXT_COLUMN].apply(
             lambda x: len([w for w in str(x).lower().split() if w in eng_stopwords]))
         return df
 
@@ -175,27 +181,15 @@ class FeatureAdded(object):
     --------------------------
     int: The number of the marks.
         """
-        df['question_mark'] = df['comment_text'].str.count('\?')
-        df['exclamation_mark'] = df['comment_text'].str.count('!')
+        df['question_mark'] = df[TEXT_COLUMN].str.count('\?')
+        df['exclamation_mark'] = df[TEXT_COLUMN].str.count('!')
         return df
 
     def add_features(self, train, test):
-        if self.upper_case:
-            self._upper(train), self._upper(test)
-        if self.word_count:
-            self._count_words(train), self._count_words(test)
-        if self.unique_words_count:
-            self._unique_words(train), self._unique_words(test)
-        if self.letter_count:
-            self._count_letters(train), self._count_letters(test)
-        if self.punctuation_count:
-            self._count_punctuation(train), self._count_punctuation(test)
-        if self.little_case:
-            self._count_little_case(train), self._count_little_case(test)
-        if self.stopwords:
-            self._count_stopwords(train), self._count_stopwords(test)
-        if self.question_or_exclamation:
-            self._question_or_exclamation(train), self._question_or_exclamation(test)
+        for method, condition in self.features.items():
+            if condition:
+                method(train), method(test)
+
         return train, test
 
 
