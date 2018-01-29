@@ -18,6 +18,7 @@ class Predictor(BaseEstimator, ClassifierMixin):
     interface
     """
     name = 'Abstract Predictor'
+
     def __init__(self, name=name):
         """
         Base constructor. The input training is expected to be preprocessed and contain

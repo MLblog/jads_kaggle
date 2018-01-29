@@ -6,7 +6,7 @@ from functools import partial
 import sys
 
 sys.path.append('..')
-from utils import timing, TAGS
+from utils import timing # noqa
 
 TUNING_OUTPUT_DEFAULT = 'data/tuning.txt'
 
