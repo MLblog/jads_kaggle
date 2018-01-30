@@ -4,6 +4,7 @@ from nltk.corpus import stopwords
 import string
 from utils import timing
 
+
 # settings. This requires running `nltk.download("stopwords")`
 nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
@@ -12,7 +13,7 @@ eng_stopwords = set(stopwords.words("english"))
 TEXT_COLUMN = "comment_text"
 
 
-class FeatureAdded(object):
+class FeatureAdder(object):
     def __init__(self, upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False,
                  stopwords=False, question_or_exclamation=False, number_bad_words=False):
@@ -77,7 +78,7 @@ class FeatureAdded(object):
 
     Example:
         >>>_upper('Mimis is such a GOOD BOY!!!')
-        3
+        2
         """
         df["count_words_upper"] = df[TEXT_COLUMN].apply(lambda x: len([w for w in str(x).split() if w.isupper()]))
         return df
@@ -235,7 +236,7 @@ if __name__ == "__main__":
     train = pd.read_csv("data/train.csv")
     test = pd.read_csv("data/test.csv")
 
-    df = FeatureAdded(upper_case=True, word_count=True, unique_words_count=True,
+    df = FeatureAdder(upper_case=True, word_count=True, unique_words_count=True,
                       letter_count=True, punctuation_count=True, little_case=True,
                       stopwords=True, question_or_exclamation=True, number_bad_words=True)
 
