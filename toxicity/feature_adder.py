@@ -11,7 +11,7 @@ eng_stopwords = set(stopwords.words("english"))
 TEXT_COLUMN = "comment_text"
 
 
-class FeatureAdded(object):
+class FeatureAdder(object):
     def __init__(self, upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False,
                  stopwords=False, question_or_exclamation=False):
