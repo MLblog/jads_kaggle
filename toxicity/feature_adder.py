@@ -1,8 +1,10 @@
 import pandas as pd
+import nltk
 from nltk.corpus import stopwords
 import string
 
-# settings. This requires running `nltk.download("stopwords")`
+# settings
+nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
 
 # Input dataframes are assumed to contain plain text in this column
@@ -40,7 +42,7 @@ class FeatureAdded(object):
 
     Example:
         >>>_upper('Mimis is such a GOOD BOY!!!')
-        3
+        2
         """
         df["count_words_upper"] = df[TEXT_COLUMN].apply(lambda x: len([w for w in str(x).split() if w.isupper()]))
         return df

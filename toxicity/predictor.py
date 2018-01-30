@@ -1,8 +1,8 @@
 from abc import abstractmethod
 import numpy as np
 from collections import Counter
-from sklearn.metrics import log_loss, make_scorer
-from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score, StratifiedShuffleSplit
+from sklearn.metrics import log_loss
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedShuffleSplit
 from sklearn.base import BaseEstimator, ClassifierMixin
 
 from utils import timing, TAGS
@@ -17,8 +17,9 @@ class Predictor(BaseEstimator, ClassifierMixin):
     Concrete implementations should follow the predictors
     interface
     """
+    name = 'Abstract Predictor'
 
-    def __init__(self, name=None):
+    def __init__(self, name=name):
         """
         Base constructor. The input training is expected to be preprocessed and contain
         features extracted for each sample along with the true values for one of the 6 tags.
@@ -55,35 +56,6 @@ class Predictor(BaseEstimator, ClassifierMixin):
         :param test_x: a pd.DataFrame of features to be used for predictions
         :return: The predicted probabilities
         """
-
-    # TODO: This needs to be improved because:
-    #       1. It returns a negative score which is unexpected
-    #       2. It only works for one tag. We need to make it compute the average score for all tags.
-    def tune(self, train_x, train_y, params, nfolds=3, verbose=5, persist=True, write_to=TUNING_OUTPUT_DEFAULT):
-        """
-        Exhaustively searches over the grid of parameters for the best combination by minimizing the log loss.
-
-        :param train_x Contains the input features
-        :param train_y Contains the dependent tag
-        :param params: Grid of parameters to be explored
-        :param nfolds: Number of folds to be used by cross-validation
-        :param verbose: Verbosity level. 0 is silent, higher int prints more stuff
-        :param persist: If set to true, will write tuning results to a file
-        :param write_to: If persist is set to True, write_to defines the filepath to write to
-        :return: tuple of: (Dict of best parameters found, Best score achieved).
-        """
-        scoring = make_scorer(log_loss, greater_is_better=False, needs_proba=True)
-        grid = GridSearchCV(self, params, scoring=scoring, cv=nfolds, n_jobs=8, verbose=verbose)
-        grid.fit(train_x, train_y)
-
-        if persist:
-            # Append results to file.
-            with open(write_to, "a") as f:
-                f.write("------------------------------------------------\n")
-                f.write("Model\t{}\n".format(self.name))
-                f.write("Best Score\t{}\nparams: {}\n\n".format(grid.best_score_, grid.best_params_))
-
-        return grid.best_params_, grid.best_score_
 
     def _stratified_cv(self, x, ys, nfolds):
         # In order to use stratified CV we transform the multi-label problem into a single label, multi-class one.
@@ -158,7 +130,8 @@ class Predictor(BaseEstimator, ClassifierMixin):
 
         if method == 'split':
             for tag in TAGS:
-                train_x, val_x, train_y, val_y = train_test_split(x, ys[tag], test_size=val_size, random_state=RANDOM_STATE)
+                train_x, val_x, train_y, val_y = train_test_split(x, ys[tag], test_size=val_size,
+                                                                  random_state=RANDOM_STATE)
                 self.fit(train_x, train_y)
                 predictions = self.predict_proba(val_x)
                 losses.append(log_loss(val_y, predictions))

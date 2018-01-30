@@ -10,7 +10,8 @@ class LogisticPredictor(Predictor):
     Adapted to our class design from the kernel:
     https://www.kaggle.com/jhoward/nb-svm-strong-linear-baseline-eda-0-052-lb
     """
-    def __init__(self, C, dual=True, name='Logistic Regression Predictor'): # noqa
+    name = 'Logistic Regression Predictor'
+    def __init__(self, C, dual=True, name=name): # noqa
         super().__init__(name)
         self.model = LogisticRegression(C=C, dual=dual)
         self.C = C
