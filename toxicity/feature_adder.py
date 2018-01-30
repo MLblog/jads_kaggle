@@ -1,8 +1,11 @@
 import pandas as pd
+import nltk
 from nltk.corpus import stopwords
 import string
+from utils import timing
 
 # settings. This requires running `nltk.download("stopwords")`
+nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
 
 # Input dataframes are assumed to contain plain text in this column
@@ -12,7 +15,7 @@ TEXT_COLUMN = "comment_text"
 class FeatureAdded(object):
     def __init__(self, upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False,
-                 stopwords=False, question_or_exclamation=False):
+                 stopwords=False, question_or_exclamation=False, number_bad_words=False):
 
         self.features = {
             self._upper: upper_case,
@@ -22,8 +25,42 @@ class FeatureAdded(object):
             self._count_punctuation: punctuation_count,
             self._count_little_case: little_case,
             self._count_stopwords: stopwords,
-            self._question_or_exclamation: question_or_exclamation
+            self._question_or_exclamation: question_or_exclamation,
+            self._count_bad_words: number_bad_words
         }
+
+    @staticmethod
+    def _count_bad_words(df):
+        """
+    This is a method that creates a new feature with the number of words in the google bad list.
+    Source: https://www.freewebheaders.com/full-list-of-bad-words-banned-by-google/
+
+    Parameters
+    -------------------------
+    df: Pandas Dataframe. Assumed to contain
+
+    Returns
+    --------------------------
+    df: Data frame with the number of the bad words accoring to the google dictionary.
+
+        """
+
+        def union_sets(*dfs):
+            final = set()
+            for df in dfs:
+                s = set(df[list(df)[0]])  # Assuming that curse words are the 1st column
+                final = final.union(s)
+            return [' {} '.format(x) for x in final]
+
+        def count_badwords(comment):
+            return sum(badword.lower() in comment.lower() for badword in badwords)
+
+        badwords_1 = pd.read_csv("data/dictionaries/google_bad_words.csv", 'utf-8')
+        badwords_2 = pd.read_csv("data/dictionaries/bad_words.csv", sep=',')
+
+        badwords = union_sets(badwords_1, badwords_2)
+        df["count_bad_words"] = df[TEXT_COLUMN].apply(count_badwords)
+        return df
 
     @staticmethod
     def _upper(df):
@@ -185,6 +222,7 @@ class FeatureAdded(object):
         df['exclamation_mark'] = df[TEXT_COLUMN].str.count('!')
         return df
 
+    @timing
     def add_features(self, train, test):
         for method, condition in self.features.items():
             if condition:
@@ -199,7 +237,7 @@ if __name__ == "__main__":
 
     df = FeatureAdded(upper_case=True, word_count=True, unique_words_count=True,
                       letter_count=True, punctuation_count=True, little_case=True,
-                      stopwords=True, question_or_exclamation=True)
+                      stopwords=True, question_or_exclamation=True, number_bad_words=True)
 
     df_train, df_test = df.add_features(train, test)
     print(df_train.head(1))
