@@ -1,8 +1,10 @@
 import pandas as pd
+import nltk
 from nltk.corpus import stopwords
 import string
 
-# settings. This requires running `nltk.download("stopwords")`
+# settings
+nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
 
 # Input dataframes are assumed to contain plain text in this column
