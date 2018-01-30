@@ -11,7 +11,7 @@ eng_stopwords = set(stopwords.words("english"))
 TEXT_COLUMN = "comment_text"
 
 
-class FeatureAdded(object):
+class FeatureAdder(object):
     def __init__(self, upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False,
                  stopwords=False, question_or_exclamation=False):
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     train = pd.read_csv("data/train.csv")
     test = pd.read_csv("data/test.csv")
 
-    df = FeatureAdded(upper_case=True, word_count=True, unique_words_count=True,
+    df = FeatureAdder(upper_case=True, word_count=True, unique_words_count=True,
                       letter_count=True, punctuation_count=True, little_case=True,
                       stopwords=True, question_or_exclamation=True)
 
