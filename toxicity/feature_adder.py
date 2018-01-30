@@ -199,7 +199,7 @@ if __name__ == "__main__":
     train = pd.read_csv("data/train.csv")
     test = pd.read_csv("data/test.csv")
 
-    df = FeatureAdded(upper_case=True, word_count=True, unique_words_count=True,
+    df = FeatureAdder(upper_case=True, word_count=True, unique_words_count=True,
                       letter_count=True, punctuation_count=True, little_case=True,
                       stopwords=True, question_or_exclamation=True)
 
