@@ -13,7 +13,7 @@ TUNING_OUTPUT_DEFAULT = 'data/tuning.txt'
 
 def eval_permutation(params, predictor_cls, train_x, train_ys, method='split', nfolds=3, silent=True):
     """
-    Evaluathes a predictor using a certain param set on the given training set.
+    Evaluates a predictor using a certain param set on the given training set.
     Note: This could be nested but multiprocessing can not picke it so it shall remain global.
 
     :param params: Parameters to be evaluated
@@ -105,9 +105,9 @@ def tune(predictor_cls, train_x, train_ys, param_grid, method='split', nfolds=3,
         # Append results to file.
         with open(write_to, "a") as f:
             f.write("------------------------------------------------\n")
-            f.write("Model\t{}\n".format(predictor_cls.name))
+            f.write("Model:\t{}\n".format(predictor_cls.name))
             for params, score in scores:
-                f.write("\tScore\t{}\nparams: {}\n\n".format(score, dict(params)))
+                f.write("Score:\t{}\nparams:\t{}\n\n".format(score, dict(params)))
 
     best_params, best_score = min(scores, key=lambda t: t[1])
 
