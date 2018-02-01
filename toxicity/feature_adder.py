@@ -2,7 +2,9 @@ import pandas as pd
 import nltk
 from nltk.corpus import stopwords
 import string
-from utils import timing
+import os
+from utils import timing, TAGS
+from preprocessing import check_compatibility
 
 nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
@@ -12,10 +14,11 @@ TEXT_COLUMN = "comment_text"
 
 
 class FeatureAdder(object):
-    def __init__(self, upper_case=False, word_count=False, unique_words_count=False,
+    def __init__(self, data_dir="data", upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False,
                  stopwords=False, question_or_exclamation=False, number_bad_words=False):
 
+        self.data_dir = data_dir
         self.features = {
             self._upper: upper_case,
             self._count_words: word_count,
@@ -28,16 +31,19 @@ class FeatureAdder(object):
             self._count_bad_words: number_bad_words
         }
 
+    def set_path(self, data_dir):
+        self.data_dir = data_dir
+
     def _count_bad_words(self, df):
         """
-    This is a method that creates a new feature with the number of words in the google bad list.
-    Source: https://www.freewebheaders.com/full-list-of-bad-words-banned-by-google/
-    Parameters
-    -------------------------
-    df: Pandas Dataframe. Assumed to contain
-    Returns
-    --------------------------
-    df: Data frame with the number of the bad words accoring to the google dictionary.
+        This is a method that creates a new feature with the number of words in the google bad list.
+        Source: https://www.freewebheaders.com/full-list-of-bad-words-banned-by-google/
+        Parameters
+        -------------------------
+        df: Pandas Dataframe. Assumed to contain
+        Returns
+        --------------------------
+        df: Data frame with the number of the bad words according to the google dictionary.
         """
 
         def union_sets(*dfs):
@@ -54,8 +60,16 @@ class FeatureAdder(object):
                 # Bad comment, probably NaN
                 return 0
 
-        badwords_1 = pd.read_csv("data/badwords/google_bad_words.csv", 'utf-8', engine="python")
-        badwords_2 = pd.read_csv("data/badwords/bad_words.csv", sep=',')
+        badwords_1_path = os.path.join(self.data_dir, "badwords", "google_bad_words.csv")
+        badwords_2_path = os.path.join(self.data_dir, "badwords", "bad_words.csv")
+
+        try:
+            badwords_1 = pd.read_csv(badwords_1_path, 'utf-8', engine="python")
+            badwords_2 = pd.read_csv(badwords_2_path, sep=',')
+        except FileNotFoundError:
+            print("Could not find the badwords folder at {}\n"
+                  "Please provide the data root path using the `set_path` method.".format(self.data_dir))
+            return None
 
         badwords = union_sets(badwords_1, badwords_2)
         df["count_bad_words"] = df[TEXT_COLUMN].apply(count_badwords)
@@ -184,6 +198,7 @@ class FeatureAdder(object):
         df['exclamation_mark'] = df[TEXT_COLUMN].str.count('!')
         return df
 
+    @check_compatibility
     @timing
     def add_features(self, train, test):
         """
@@ -195,7 +210,7 @@ class FeatureAdder(object):
 
         Returns
         --------------------------
-        (train, test): Both pd.Dataframes with their extra features appended
+        (train_x, test_x): Matrices containing all features
 
         Example
         --------------------------
@@ -206,7 +221,9 @@ class FeatureAdder(object):
             if condition:
                 method(train), method(test)
 
-        return train, test
+        train_x = train.drop(TAGS + ['id', TEXT_COLUMN], axis=1).as_matrix()
+        test_x = test.drop(['id', TEXT_COLUMN], axis=1).as_matrix()
+        return train_x, test_x
 
 
 if __name__ == "__main__":
