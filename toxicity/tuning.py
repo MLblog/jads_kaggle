@@ -45,7 +45,7 @@ def write_results(write_to, scores, predictor_cls):
                 f.write("Score:\t{}\nparams:\t{}\n\n".format(score, dict(params)))
 
 
-def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, max_time, model_type='GP', acquisition_type='EI', 
+def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, max_time, model_type='GP', acquisition_type='EI',
                           acquisition_weight=2, eps=1e-6, method='split', nfolds=3, silent=True, persist=True, write_to=TUNING_OUTPUT_DEFAULT):
     """
     Automatically configures hyperparameters of ML algorithms. Suitable for reasonably small sets of params.
@@ -69,7 +69,7 @@ def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, ma
     :param write_to: If persist is set to True, write_to defines the filepath to write to
     :return: tuple of: (Best parameters found, Best score achieved).
     """
-    
+
     print("Applying Bayesian Optimization to configure {} in at most {} iterations and {} seconds."
           .format(predictor_cls, max_iter, max_time))
 
@@ -77,11 +77,10 @@ def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, ma
         """ Changes the 2d np.array from GPyOpt to a dictionary. """
         mapping = dict()
         for i in range(len(params)):
-            mapping[params[i]["name"]] = p_array[0,i]
-        
+            mapping[params[i]["name"]] = p_array[0, i]
+
         return mapping
-            
-    
+
     # define the optimization function
     def f(parameter_array):
         param_dict = create_mapping(parameter_array)
@@ -99,14 +98,14 @@ def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, ma
 
     # scores are added to this list in the optimization function f
     scores = []
-    
+
     # define optimization problem
-    opt = BayesianOptimization(f, domain=params, model_type = model_type, acquisition_type= acquisition_type,  
-                                normalize_Y = False, acquisition_weight = acquisition_weight)
+    opt = BayesianOptimization(f, domain=params, model_type=model_type, acquisition_type=acquisition_type,
+                               normalize_Y=False, acquisition_weight=acquisition_weight)
 
     # run optimization
     opt.run_optimization(max_iter=max_iter, max_time=max_time, eps=eps, verbosity=False)
-    
+
     if persist:
         write_results(write_to, scores, predictor_cls)
 
