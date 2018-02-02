@@ -5,6 +5,8 @@ from functools import partial
 
 import sys
 
+from GPyOpt.methods import BayesianOptimization
+
 sys.path.append('..')
 from utils import timing # noqa
 
@@ -32,6 +34,85 @@ def eval_permutation(params, predictor_cls, train_x, train_ys, method='split', n
     predictor = predictor_cls(**params)
     score = predictor.evaluate(train_x, train_ys, method=method, nfolds=nfolds)
     return tuple(sorted(params.items())), score
+
+
+def write_results(write_to, scores, predictor_cls):
+    """ Writes experiment results to specified file """
+    with open(write_to, "a") as f:
+            f.write("------------------------------------------------\n")
+            f.write("Model:\t{}\n".format(predictor_cls.name))
+            for params, score in scores:
+                f.write("Score:\t{}\nparams:\t{}\n\n".format(score, dict(params)))
+
+
+def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, max_time, model_type='GP', acquisition_type='EI', 
+                          acquisition_weight=2, eps=1e-6, method='split', nfolds=3, silent=True, persist=True, write_to=TUNING_OUTPUT_DEFAULT):
+    """
+    Automatically configures hyperparameters of ML algorithms. Suitable for reasonably small sets of params.
+
+    :param predictor_cls: The predictors class
+    :param train_x Contains the preprocessed input features
+    :param train_ys Dictionary mapping tag names to their array of values
+    :param params: Dictionary of parameters, type (continuous/discrete), and their allowed ranges/values.
+           NOTE: param_ranges must first contain continuous variables, then discrete.
+    :param max_iter: Maximum number of iterations / evaluations.
+           NOTE: excluding initial exploration session, might converge earlier.
+    :param max_time: Maximum time to be used in optimization.
+    :param model_type: Model used for optimization. Defaults to Gaussian Process ('GP').
+    :param acquisition_type: Function used to determine the next parameter settings to evaluate.
+    :param acquisition_weight: Exploration vs Exploitation parameter.
+    :param eps: Minimum distances between consecutive candidates x.
+    :param method: Method to be used for evaluation. Set to split for speed by default, CV might be more robust
+    :param nfolds: Number of folds to be used by cross-validation (only used if method='CV')
+    :param silent: Whether or not progress messages will be printed
+    :param persist: If set to true, will write tuning results to a file
+    :param write_to: If persist is set to True, write_to defines the filepath to write to
+    :return: tuple of: (Best parameters found, Best score achieved).
+    """
+    
+    print("Applying Bayesian Optimization to configure {} in at most {} iterations and {} seconds."
+          .format(predictor_cls, max_iter, max_time))
+
+    def create_mapping(p_array):
+        """ Changes the 2d np.array from GPyOpt to a dictionary. """
+        mapping = dict()
+        for i in range(len(params)):
+            mapping[params[i]["name"]] = p_array[0,i]
+        
+        return mapping
+            
+    
+    # define the optimization function
+    def f(parameter_array):
+        param_dict = create_mapping(parameter_array)
+        score = eval_permutation(params=param_dict,
+                                 predictor_cls=predictor_cls,
+                                 train_x=train_x,
+                                 train_ys=train_ys,
+                                 method=method,
+                                 nfolds=nfolds,
+                                 silent=silent)
+
+        scores.append(score)
+        # only return score to optimizer
+        return score[1]
+
+    # scores are added to this list in the optimization function f
+    scores = []
+    
+    # define optimization problem
+    opt = BayesianOptimization(f, domain=params, model_type = model_type, acquisition_type= acquisition_type,  
+                                normalize_Y = False, acquisition_weight = acquisition_weight)
+
+    # run optimization
+    opt.run_optimization(max_iter=max_iter, max_time=max_time, eps=eps, verbosity=False)
+    
+    if persist:
+        write_results(write_to, scores, predictor_cls)
+
+    best_params, best_score = min(scores, key=lambda t: t[1])
+
+    return dict(best_params), best_score
 
 
 @timing
@@ -102,12 +183,7 @@ def tune(predictor_cls, train_x, train_ys, param_grid, method='split', nfolds=3,
     scores = pool.map(evaluator, permutations)
 
     if persist:
-        # Append results to file.
-        with open(write_to, "a") as f:
-            f.write("------------------------------------------------\n")
-            f.write("Model:\t{}\n".format(predictor_cls.name))
-            for params, score in scores:
-                f.write("Score:\t{}\nparams:\t{}\n\n".format(score, dict(params)))
+        write_results(write_to, scores, predictor_cls)
 
     best_params, best_score = min(scores, key=lambda t: t[1])
 
