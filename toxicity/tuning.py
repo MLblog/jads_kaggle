@@ -45,8 +45,9 @@ def write_results(write_to, scores, predictor_cls):
                 f.write("Score:\t{}\nparams:\t{}\n\n".format(score, dict(params)))
 
 
-def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, max_time, model_type='GP', acquisition_type='EI',
-                          acquisition_weight=2, eps=1e-6, method='split', nfolds=3, silent=True, persist=True, write_to=TUNING_OUTPUT_DEFAULT):
+def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, max_time=600, model_type='GP', acquisition_type='EI',
+                          acquisition_weight=2, eps=1e-6, batch_method='local_penalization', batch_size=1, method='split', nfolds=3,
+                          silent=True, persist=True, write_to=TUNING_OUTPUT_DEFAULT):
     """
     Automatically configures hyperparameters of ML algorithms. Suitable for reasonably small sets of params.
 
@@ -59,9 +60,27 @@ def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, ma
            NOTE: excluding initial exploration session, might converge earlier.
     :param max_time: Maximum time to be used in optimization.
     :param model_type: Model used for optimization. Defaults to Gaussian Process ('GP').
+        - 'GP', standard Gaussian process.
+        - 'GP_MCMC',  Gaussian process with prior in the hyper-parameters.
+        - 'sparseGP', sparse Gaussian process.
+        - 'warperdGP', warped Gaussian process.
+        - 'InputWarpedGP', input warped Gaussian process.
+        - 'RF', random forest (scikit-learn).
     :param acquisition_type: Function used to determine the next parameter settings to evaluate.
+        - 'EI', expected improvement.
+        - 'EI_MCMC', integrated expected improvement (requires GP_MCMC model).
+        - 'MPI', maximum probability of improvement.
+        - 'MPI_MCMC', maximum probability of improvement (requires GP_MCMC model).
+        - 'LCB', GP-Lower confidence bound.
+        - 'LCB_MCMC', integrated GP-Lower confidence bound (requires GP_MCMC model).
     :param acquisition_weight: Exploration vs Exploitation parameter.
-    :param eps: Minimum distances between consecutive candidates x.
+    :param eps: Minimum distance between consecutive candidates x.
+    :param batch_method: Determines the way the objective is evaluated if batch_size > 1 (all equivalent if batch_size=1).
+        - 'sequential', sequential evaluations.
+        - 'random': synchronous batch that selects the first element as in a sequential policy and the rest randomly.
+        - 'local_penalization': batch method proposed in (Gonzalez et al. 2016).
+        - 'thompson_sampling': batch method using Thompson sampling.
+    :param batch_size: Number of parallel optimizations to run. If None, uses batch_size = number of cores.
     :param method: Method to be used for evaluation. Set to split for speed by default, CV might be more robust
     :param nfolds: Number of folds to be used by cross-validation (only used if method='CV')
     :param silent: Whether or not progress messages will be printed
@@ -99,13 +118,24 @@ def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, ma
     # scores are added to this list in the optimization function f
     scores = []
 
+    # run optimization in parallel
+    num_cores = max(1, multiprocessing.cpu_count() - 1)
+
+    # set batch_size equal to num_cores if no batch_size is provided
+    if not batch_size:
+        batch_size = num_cores
+
+    if not silent:
+        print("Running Bayesian Optimization in batches of {} on {} cores using {}.".format(batch_size, num_cores, batch_method))
+
     # define optimization problem
     opt = BayesianOptimization(f, domain=params, model_type=model_type, acquisition_type=acquisition_type,
-                               normalize_Y=False, acquisition_weight=acquisition_weight)
+                               normalize_Y=False, acquisition_weight=acquisition_weight, num_cores=num_cores, batch_size=batch_size)
 
     # run optimization
     opt.run_optimization(max_iter=max_iter, max_time=max_time, eps=eps, verbosity=False)
 
+    # report results
     if persist:
         write_results(write_to, scores, predictor_cls)
 
