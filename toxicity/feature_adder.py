@@ -15,9 +15,6 @@ eng_stopwords = set(stopwords.words("english"))
 TEXT_COLUMN = "comment_text"
 
 
-    
-
-
 class FeatureAdder(object):
     def __init__(self, data_dir="data", upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False,
@@ -229,11 +226,12 @@ class FeatureAdder(object):
         train_x = train.drop(TAGS + ['id', TEXT_COLUMN], axis=1).as_matrix()
         test_x = test.drop(['id', TEXT_COLUMN], axis=1).as_matrix()
         return train_x, test_x
-    
-def save_results(df_train, df_test, param, save = True):
+
+
+def save_results(df_train, df_test, param, save=True):
         """
-        This function create the np matrices with the stimated features. In addition (optional) it saves the 
-        matrices as csv files/
+        This function create the np matrices with the stimated features.
+        In addition (optional) it saves the matrices as csv files/
 
         Parameters
         -------------------------
@@ -245,34 +243,31 @@ def save_results(df_train, df_test, param, save = True):
 
         Example
         --------------------------
-            >>> param = {'upper_case':True, 'word_count':True, 'unique_words_count':True, 
-             'letter_count':True, 'punctuation_count':True, 'little_case':True, 
+        >>> param = {'upper_case':True, 'word_count':True, 'unique_words_count':True,
+             'letter_count':True, 'punctuation_count':True, 'little_case':True,
              'stopwords':True, 'question_or_exclamation':True, 'number_bad_words':True}
-            >>> train, test = save_results(df_train, df_test, param)
+        >>> train, test = save_results(df_train, df_test, param)
         """
-    train, test = FeatureAdder(**param).add_features(df_train, df_test)
-    
-    if save:
-        unique_name = time.strftime("%Y%m%d-%H%M%S")
-        # Save data frames
-        name = 'data/output/' + 'df_train ' + unique_name+'.csv'
-        print('Saving train file as {}'.format(name))
-        np.savetxt(name, train, delimiter=",")
-        name = 'data/output/' + 'df_test ' + unique_name+'.csv'
-        print('Saving test file as {}'.format(name))
-        np.savetxt(name, test, delimiter=",")
-        print('Files saved')
-        
-    return train, test 
+        train, test = FeatureAdder(**param).add_features(df_train, df_test)
+
+        if save:
+            unique_name = time.strftime("%Y%m%d-%H%M%S")
+            # Save data frames
+            name = 'data/output/' + 'df_train ' + unique_name+'.csv'
+            print('Saving train file as {}'.format(name))
+            np.savetxt(name, train, delimiter=",")
+            name = 'data/output/' + 'df_test ' + unique_name+'.csv'
+            print('Saving test file as {}'.format(name))
+            np.savetxt(name, test, delimiter=",")
+            print('Files saved')
+        return train, test
+
 
 if __name__ == "__main__":
     df_train = pd.read_csv("data/train.csv")
     df_test = pd.read_csv("data/test.csv")
-
-    param = {'upper_case':True, 'word_count':True, 'unique_words_count':True, 
-             'letter_count':True, 'punctuation_count':True, 'little_case':True, 
-             'stopwords':True, 'question_or_exclamation':True, 'number_bad_words':True}
-    
+    param = {'upper_case': True, 'word_count': True, 'unique_words_count': True,
+             'letter_count': True, 'punctuation_count': True, 'little_case': True,
+             'stopwords': True, 'question_or_exclamation': True, 'number_bad_words': True}
     train, test = save_results(df_train, df_test, param)
-    
     print(train.head(1))
