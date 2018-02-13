@@ -1,5 +1,7 @@
 import time
 import pandas as pd
+import numpy as np
+from scipy.sparse import csr_matrix
 
 TAGS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 
@@ -40,3 +42,35 @@ def create_submission(predictor, train_x, train_ys, test_x, test_id, write_to):
 
     submission.to_csv(write_to, index=False)
     print("Submissions created at location " + write_to)
+    
+    
+def save_sparse_csr(filename, matrix):
+        """
+        Save sparce matrices
+
+        Parameters
+        -------------------------
+        filename: name of the file where the sparce matrix is saved
+        matrix: saprce matrix to be saved
+            
+        Returns
+        --------------------------
+        .npz document
+        """
+        np.savez(filename, data=matrix.data, indices=matrix.indices, indptr=matrix.indptr, shape=matrix.shape)
+
+def load_sparse_csr(filename):
+        """
+        Load sparce matrices
+
+        Parameters
+        -------------------------
+        filename: name of the file where the sparce matrix is saved
+            
+        Returns
+        --------------------------
+        sparce matrix
+        """
+        filename = filename + '.npz'
+        loader = np.load(filename)
+        return csr_matrix((loader['data'], loader['indices'], loader['indptr']), shape=loader['shape'])
