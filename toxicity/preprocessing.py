@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from utils import timing, save_sparse_csr
 
+
 def check_compatibility(f):
     """
     Decorator to assert that a preprocessing function returns compatible train and test sets.
@@ -45,10 +46,10 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
     """
     train["comment_text"].fillna("unknown", inplace=True)
     test["comment_text"].fillna("unknown", inplace=True)
-    
+
     if remove_numbers_function:
         train, test = remove_numbers(train, test)
-        
+
     re_tok = re.compile(f'([{string.punctuation}“”¨«»®´·º½¾¿¡§£₤‘’])')
 
     def tokenizer(s): return re_tok.sub(r' \1 ', s).split()
@@ -71,15 +72,15 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
 
     if debug:
         print("Removing these tokens:\n{}".format(vec.stop_words_))
-        
+
     if save:
         save_sparse_csr('data/output/sparce_train', train)
         save_sparse_csr('data/output/sparce_test', test)
-        
+
     return train, test
+
 
 if __name__ == "__main__":
     train = pd.read_csv("data/train.csv")
     test = pd.read_csv("data/test.csv")
-    
     _, _ = tf_idf(train, test, params=None, remove_numbers_function=True, debug=True, save=True)
