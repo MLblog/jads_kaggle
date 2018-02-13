@@ -5,12 +5,17 @@ import string
 import os
 from utils import timing, TAGS
 from preprocessing import check_compatibility
+import time
+import numpy as np
 
 nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
 
 # Input dataframes are assumed to contain plain text in this column
 TEXT_COLUMN = "comment_text"
+
+
+    
 
 
 class FeatureAdder(object):
@@ -224,15 +229,50 @@ class FeatureAdder(object):
         train_x = train.drop(TAGS + ['id', TEXT_COLUMN], axis=1).as_matrix()
         test_x = test.drop(['id', TEXT_COLUMN], axis=1).as_matrix()
         return train_x, test_x
+    
+def save_results(df_train, df_test, param, save = True):
+        """
+        This function create the np matrices with the stimated features. In addition (optional) it saves the 
+        matrices as csv files/
 
+        Parameters
+        -------------------------
+        df_train, df_test: pd.Dataframes to go through the transformation
+        param: dictionary with the features that will be calculated in the FeatureAdder class
+        Returns
+        --------------------------
+        (train_x, test_x): Matrices containing all features
+
+        Example
+        --------------------------
+            >>> param = {'upper_case':True, 'word_count':True, 'unique_words_count':True, 
+             'letter_count':True, 'punctuation_count':True, 'little_case':True, 
+             'stopwords':True, 'question_or_exclamation':True, 'number_bad_words':True}
+            >>> train, test = save_results(df_train, df_test, param)
+        """
+    train, test = FeatureAdder(**param).add_features(df_train, df_test)
+    
+    if save:
+        unique_name = time.strftime("%Y%m%d-%H%M%S")
+        # Save data frames
+        name = 'data/output/' + 'df_train ' + unique_name+'.csv'
+        print('Saving train file as {}'.format(name))
+        np.savetxt(name, train, delimiter=",")
+        name = 'data/output/' + 'df_test ' + unique_name+'.csv'
+        print('Saving test file as {}'.format(name))
+        np.savetxt(name, test, delimiter=",")
+        print('Files saved')
+        
+    return train, test 
 
 if __name__ == "__main__":
-    train = pd.read_csv("data/train.csv")
-    test = pd.read_csv("data/test.csv")
+    df_train = pd.read_csv("data/train.csv")
+    df_test = pd.read_csv("data/test.csv")
 
-    da = FeatureAdder(upper_case=True, word_count=True, unique_words_count=True,
-                      letter_count=True, punctuation_count=True, little_case=True,
-                      stopwords=True, question_or_exclamation=True, number_bad_words=True)
-
-    df_train, df_test = da.add_features(train, test)
-    print(df_train.head(1))
+    param = {'upper_case':True, 'word_count':True, 'unique_words_count':True, 
+             'letter_count':True, 'punctuation_count':True, 'little_case':True, 
+             'stopwords':True, 'question_or_exclamation':True, 'number_bad_words':True}
+    
+    train, test = save_results(df_train, df_test, param)
+    
+    print(train.head(1))
