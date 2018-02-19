@@ -3,7 +3,7 @@ import nltk
 from nltk.corpus import stopwords
 import string
 import os
-from utils import timing, TAGS
+from utils import timing
 
 nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
@@ -226,12 +226,12 @@ class FeatureAdder(object):
             >>>
             >>> # to load results from your local machine
             >>> train, test = fa.get_features(df_train, df_test, load=True, save=False)
-            
+
         """
-        base_dir = self.data_dir + "/output" 
+        base_dir = self.data_dir + "/output"
         if not os.path.exists(base_dir):
             os.makedirs(base_dir)
-            
+
         name_train = base_dir + '/df_train_features_added.csv'
         name_test = base_dir + '/df_test_features_added.csv'
 
@@ -241,21 +241,21 @@ class FeatureAdder(object):
                 train, test = pd.read_csv(name_train), pd.read_csv(name_test)
             else:
                 raise ValueError("You asked to load the features but they were not found " +
-                                           "at the specified location: \n{}\n{}".format(name_train, name_test))
+                                 "at the specified location: \n{}\n{}".format(name_train, name_test))
         else:
             print('Computing the new features, this will take a while...!')
             for method, condition in self.features.items():
                 if condition:
                     method(train), method(test)
-            
+
             train.drop(TEXT_COLUMN, axis=1, inplace=True)
             test.drop(TEXT_COLUMN, axis=1, inplace=True)
 
         if save:
             print('Saving train file as {}'.format(name_train))
-            train.to_csv(name_train, index = False)
+            train.to_csv(name_train, index=False)
             print('Saving test file as {}'.format(name_test))
-            test.to_csv(name_test, index = False)
+            test.to_csv(name_test, index=False)
             print('Files saved')
 
         return train, test
@@ -264,9 +264,9 @@ class FeatureAdder(object):
 if __name__ == "__main__":
     df_train = pd.read_csv("data/train.csv")
     df_test = pd.read_csv("data/test.csv")
-    
+
     # Choose features to include in case computation is needed.
     params = {'upper_case': True, 'word_count': True, 'unique_words_count': True,
-             'letter_count': True, 'punctuation_count': True, 'little_case': True,
-             'stopwords': True, 'question_or_exclamation': True, 'number_bad_words': True}
+              'letter_count': True, 'punctuation_count': True, 'little_case': True,
+              'stopwords': True, 'question_or_exclamation': True, 'number_bad_words': True}
     train, test = FeatureAdder(**params).get_features(df_train, df_test)
