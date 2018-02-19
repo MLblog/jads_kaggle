@@ -4,10 +4,6 @@ from nltk.corpus import stopwords
 import string
 import os
 from utils import timing, TAGS
-from preprocessing import check_compatibility
-# import time
-import numpy as np
-# import sys
 
 nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
@@ -201,81 +197,65 @@ class FeatureAdder(object):
         df['exclamation_mark'] = df[TEXT_COLUMN].str.count('!')
         return df
 
-    @check_compatibility
     @timing
-    def add_features(self, train, test):
+    def get_features(self, train, test, save=False, load=True):
         """
         Call feature extractors that have been activated (by setting their boolean attribute to True)
 
         Parameters
         -------------------------
         train, test: pd.Dataframes to go through the transformation
-
-        Returns
-        --------------------------
-        (train_x, test_x): Matrices containing all features
-
-        Example
-        --------------------------
-            >>> fa = FeatureAdder(upper_case=True, word_count=True, unique_words_count=True)  # Activate desired feature extraction
-            >>> train, test = fa.add_features(train, test)
-        """
-        for method, condition in self.features.items():
-            if condition:
-                method(train), method(test)
-
-        train_x = train.drop(TAGS + ['id', TEXT_COLUMN], axis=1).as_matrix()
-        test_x = test.drop(['id', TEXT_COLUMN], axis=1).as_matrix()
-        return train_x, test_x
-
-
-def save_results(df_train, df_test, param, save=False, get_files=True):
-        """
-        This function create the np matrices with the stimated features.
-        In addition (optional) it saves the matrices as csv files/
-
-        Parameters
-        -------------------------
-        df_train, df_test: pd.Dataframes to go through the transformation
-        param: dictionary with the features that will be calculated in the FeatureAdder class
-        Returns
         save: boolean. True to save the train and test data set in your local machine
-        get_files: boolean. True to get the train and test set from your local machine
+        load: boolean. True to get the train and test set from your local machine
+
+        Returns
         --------------------------
-        (train_x, test_x): Matrices containing all features
+        (pd.DataFrame, pd.DataFrame)
+                DataFrames containing all features
 
         Example
-        --------------------------
-        >>> param = {'upper_case':True, 'word_count':True, 'unique_words_count':True,
-             'letter_count':True, 'punctuation_count':True, 'little_case':True,
-             'stopwords':True, 'question_or_exclamation':True, 'number_bad_words':True}
-        # to create and save train and test in your local machine
-        >>>  train, test = save_results(df_train, df_test, param, save=True)
-        # to get results from your local machine
-        >>> train, test = save_results(df_train, df_test, param, get_files=True)
+        -------
+            >>> # Activate desired feature extraction
+            >>> params = {'upper_case':True, 'word_count':True, 'unique_words_count':True,
+                 'letter_count':True, 'punctuation_count':True, 'little_case':True,
+                 'stopwords':True, 'question_or_exclamation':True, 'number_bad_words':True}
+            >>> fa = FeatureAdder(**params)
+            >>>
+            >>> # to create and save train and test in your local machine
+            >>> train, test = fa.get_features(df_train, df_test, load=False, save=True)
+            >>>
+            >>> # to load results from your local machine
+            >>> train, test = fa.get_features(df_train, df_test, load=True, save=False)
+            
         """
-        name_train = 'data/output/' + 'df_train_features_added.csv'
-        name_test = 'data/output/' + 'df_test_features_added.csv'
-        recursion = False
+        base_dir = self.data_dir + "/output" 
+        if not os.path.exists(base_dir):
+            os.makedirs(base_dir)
+            
+        name_train = base_dir + '/df_train_features_added.csv'
+        name_test = base_dir + '/df_test_features_added.csv'
 
-        if get_files and not save:
+        if load:
             if os.path.exists(name_train) and os.path.exists(name_test):
                 print('getting files from your local machine')
-                train = pd.read_csv(name_train)
-                test = pd.read_csv(name_test)
-                return train, test
+                train, test = pd.read_csv(name_train), pd.read_csv(name_test)
             else:
-                print('The files do not exist in your local machine. We will create and save them.')
-                train, test = save_results(df_train, df_test, param, save=True, get_files=False)
-                recursion = True
+                raise ValueError("You asked to load the features but they were not found " +
+                                           "at the specified location: \n{}\n{}".format(name_train, name_test))
+        else:
+            print('Computing the new features, this will take a while...!')
+            for method, condition in self.features.items():
+                if condition:
+                    method(train), method(test)
+            
+            train.drop(TEXT_COLUMN, axis=1, inplace=True)
+            test.drop(TEXT_COLUMN, axis=1, inplace=True)
 
-        if save and not recursion:
-            train, test = FeatureAdder(**param).add_features(df_train, df_test)
-            # Save data frames
+        if save:
             print('Saving train file as {}'.format(name_train))
-            np.savetxt(name_train, train, delimiter=",")
+            train.to_csv(name_train, index = False)
             print('Saving test file as {}'.format(name_test))
-            np.savetxt(name_test, test, delimiter=",")
+            test.to_csv(name_test, index = False)
             print('Files saved')
 
         return train, test
@@ -284,7 +264,9 @@ def save_results(df_train, df_test, param, save=False, get_files=True):
 if __name__ == "__main__":
     df_train = pd.read_csv("data/train.csv")
     df_test = pd.read_csv("data/test.csv")
-    param = {'upper_case': True, 'word_count': True, 'unique_words_count': True,
+    
+    # Choose features to include in case computation is needed.
+    params = {'upper_case': True, 'word_count': True, 'unique_words_count': True,
              'letter_count': True, 'punctuation_count': True, 'little_case': True,
              'stopwords': True, 'question_or_exclamation': True, 'number_bad_words': True}
-    train, test = save_results(df_train, df_test, param, save=True, get_files=True)
+    train, test = FeatureAdder(**params).get_features(df_train, df_test)
