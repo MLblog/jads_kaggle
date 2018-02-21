@@ -72,6 +72,5 @@ def load_sparse_csr(filename):
         --------------------------
         sparce matrix
         """
-        filename = filename + '.npz'
         loader = np.load(filename)
         return csr_matrix((loader['data'], loader['indices'], loader['indptr']), shape=loader['shape'])
