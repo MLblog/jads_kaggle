@@ -5,6 +5,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from utils import timing, save_sparse_csr, load_sparse_csr
 import os
 
+
 def check_compatibility(f):
     """
     Decorator to assert that a preprocessing function returns compatible train and test sets.
@@ -75,7 +76,8 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
 
     return train, test
 
-def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False, load=True, data_dir="data"):    
+
+def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False, load=True, data_dir="data"):
     """
     Get sparse matrix form of the train and test set
 
@@ -105,7 +107,7 @@ def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_functio
 
     if not os.path.exists(base_dir):
         os.makedirs(base_dir)
-        
+
     name_train = base_dir + 'sparce_train.npz'
     name_test = base_dir + 'sparce_test.npz'
 
@@ -113,8 +115,8 @@ def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_functio
         if os.path.exists(name_train) and os.path.exists(name_test):
             train, test = load_sparse_csr(name_train), load_sparse_csr(name_test)
         else:
-            raise ValueError("You asked to load the features but they were not found " +
-                                 "at the specified location: \n{}\n{}".format(name_train, name_test))
+            raise ValueError("You asked to load the features but they were not found"
+                             + "at the specified location: \n{}\n{}".format(name_train, name_test))
 
     else:
         print('Computing the sparse matrixes, this will take a while...!')
@@ -128,9 +130,9 @@ def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_functio
 
     return train, test
 
+
 if __name__ == "__main__":
     train = pd.read_csv("data/train.csv")
     test = pd.read_csv("data/test.csv")
     get_sparse_matrix(train, test, params=None, remove_numbers_function=True, debug=True, save=True, load=False)
-    #train, test = get_sparse_matrix(load=True)
-
+    # train, test = get_sparse_matrix(load=True)
