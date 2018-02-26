@@ -161,7 +161,6 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
     else:
         raise ValueError("Only 'lda' and 'lsi' models are supported, you passed {}".format(model_type))
 
-
     train = model[train_tfidf]
     test = model[test_tfidf]
 
