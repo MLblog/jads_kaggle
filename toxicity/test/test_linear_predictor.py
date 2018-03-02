@@ -1,11 +1,9 @@
-'''Automated tests for the Logistic Predictor class'''
 import numbers
 import unittest
 import pathmagic  # noqa
 from linear_predictor import LogisticPredictor
 from utils import *
 from preprocessing import *
-
 
 train_file = "../data/train.csv"
 test_file = "../data/test.csv"
