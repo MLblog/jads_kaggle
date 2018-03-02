@@ -49,7 +49,7 @@ class FeatureAdder(object):
         def subjectivity_score(x):
             return TextBlob(x).sentiment.subjectivity
 
-        df['polarity_socre'] = df[TEXT_COLUMN].apply(lambda x: polarity_score(x))
+        df['polarity_score'] = df[TEXT_COLUMN].apply(lambda x: polarity_score(x))
         df['subjectivity_score'] = df[TEXT_COLUMN].apply(lambda x: subjectivity_score(x))
         return df
 
