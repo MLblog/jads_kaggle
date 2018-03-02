@@ -2,8 +2,7 @@
 import numbers
 import unittest
 import sys
-sys.path.append("..")
-
+sys.path.append("..") #noqa
 from linear_predictor import LogisticPredictor
 from utils import *
 from preprocessing import *
