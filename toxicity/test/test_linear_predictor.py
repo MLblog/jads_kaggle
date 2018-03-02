@@ -16,13 +16,12 @@ class TestLinearPredictor(unittest.TestCase):
     # Logistic predictor parameters
     lr_params = {"C": 4, "dual": True}
 
-    def setUp(self, tf_idf_func=True):
+    def setUp(self):
         self.train = pd.read_csv(train_file, nrows=TestLinearPredictor.number_of_rows)
         self.test = pd.read_csv(test_file, nrows=TestLinearPredictor.number_of_rows)
         self.y_train = {tag: self.train[tag].values for tag in utils.TAGS}
         self.logistic_predictor = LogisticPredictor(**TestLinearPredictor.lr_params)
-        if tf_idf_func:
-            self.train, self.test = self.idf(self.train, self.test)
+        self.train, self.test = tf_idf(self.train, self.test)
 
     def test_stratified(self):
         loss = self.logistic_predictor.evaluate(self.train, self.y_train, method='stratified_CV')
@@ -42,10 +41,6 @@ class TestLinearPredictor(unittest.TestCase):
         predictions = self.logistic_predictor.predict(self.test)
         assert predictions.shape == (self.test.shape[0],)
         assert (predictions <= 1).all() and (predictions >= 0).all()
-
-    @staticmethod
-    def idf(train_df, test_df):
-        return tf_idf(train_df, test_df)
 
 
 if __name__ == '__main__':
