@@ -2,8 +2,9 @@ import numbers
 import unittest
 import pathmagic  # noqa
 from linear_predictor import LogisticPredictor
-from utils import *
-from preprocessing import *
+import utils
+import pandas as pd
+from preprocessing import tf_idf
 
 train_file = "../data/train.csv"
 test_file = "../data/test.csv"
@@ -15,27 +16,27 @@ class TestLinearPredictor(unittest.TestCase):
     # Logistic predictor parameters
     lr_params = {"C": 4, "dual": True}
 
-    def setUp(self, tf_idf=True):
+    def setUp(self, tf_idf_func=True):
         self.train = pd.read_csv(train_file, nrows=TestLinearPredictor.number_of_rows)
         self.test = pd.read_csv(test_file, nrows=TestLinearPredictor.number_of_rows)
-        self.y_train = {tag: self.train[tag].values for tag in TAGS}
+        self.y_train = {tag: self.train[tag].values for tag in utils.TAGS}
         self.logistic_predictor = LogisticPredictor(**TestLinearPredictor.lr_params)
-        if tf_idf:
+        if tf_idf_func:
             self.train, self.test = self.idf(self.train, self.test)
 
-    def testStratified(self):
+    def test_stratified(self):
         loss = self.logistic_predictor.evaluate(self.train, self.y_train, method='stratified_CV')
         assert isinstance(loss, numbers.Number)
 
-    def testCV(self):
+    def test_cv(self):
         loss = self.logistic_predictor.evaluate(self.train, self.y_train, method='CV')
         assert isinstance(loss, numbers.Number)
 
-    def testSplit(self):
+    def test_split(self):
         loss = self.logistic_predictor.evaluate(self.train, self.y_train, method='split')
         assert isinstance(loss, numbers.Number)
 
-    def testPredictProba(self):
+    def test_predict_proba(self):
         """We will test for the 'toxic' tag"""
         self.logistic_predictor.fit(self.train, self.y_train['toxic'])
         predictions = self.logistic_predictor.predict(self.test)
