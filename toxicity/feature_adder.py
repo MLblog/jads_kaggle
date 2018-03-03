@@ -4,6 +4,7 @@ from nltk.corpus import stopwords
 import string
 import os
 from utils import timing
+from textblob import TextBlob
 
 nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
@@ -15,7 +16,7 @@ TEXT_COLUMN = "comment_text"
 class FeatureAdder(object):
     def __init__(self, data_dir="data", upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False,
-                 stopwords=False, question_or_exclamation=False, number_bad_words=False):
+                 stopwords=False, question_or_exclamation=False, number_bad_words=False, sentiment_analysis=False):
 
         self.data_dir = data_dir
         self.features = {
@@ -27,8 +28,30 @@ class FeatureAdder(object):
             self._count_little_case: little_case,
             self._count_stopwords: stopwords,
             self._question_or_exclamation: question_or_exclamation,
-            self._count_bad_words: number_bad_words
-        }
+            self._count_bad_words: number_bad_words,
+            self._polarity_subjectivity_score: sentiment_analysis
+            }
+
+    def _polarity_subjectivity_score(self, df):
+        """
+        This method calculates the polarity and subjetivity score. Both metrics are used to
+        evaluate the sentiment of a text.
+        Parameters
+        -------------------------
+        df: Pandas Dataframe. Assumed to contain text in a column named `TEXT_COLUMN`
+        Returns
+        --------------------------
+        df: Data frame with the polarity and sbjectivity score
+        """
+        def polarity_score(x):
+            return TextBlob(x).sentiment.polarity
+
+        def subjectivity_score(x):
+            return TextBlob(x).sentiment.subjectivity
+
+        df['polarity_score'] = df[TEXT_COLUMN].apply(lambda x: polarity_score(x))
+        df['subjectivity_score'] = df[TEXT_COLUMN].apply(lambda x: subjectivity_score(x))
+        return df
 
     def set_path(self, data_dir):
         self.data_dir = data_dir
@@ -39,7 +62,7 @@ class FeatureAdder(object):
         Source: https://www.freewebheaders.com/full-list-of-bad-words-banned-by-google/
         Parameters
         -------------------------
-        df: Pandas Dataframe. Assumed to contain
+        df: Pandas Dataframe. Assumed to contain text in a column named `TEXT_COLUMN`
         Returns
         --------------------------
         df: Data frame with the number of the bad words according to the google dictionary.
@@ -198,7 +221,7 @@ class FeatureAdder(object):
         return df
 
     @timing
-    def get_features(self, train, test, save=False, load=True):
+    def get_features(self, train=None, test=None, save=False, load=True):
         """
         Call feature extractors that have been activated (by setting their boolean attribute to True)
 
@@ -225,7 +248,7 @@ class FeatureAdder(object):
             >>> train, test = fa.get_features(df_train, df_test, load=False, save=True)
             >>>
             >>> # to load results from your local machine
-            >>> train, test = fa.get_features(df_train, df_test, load=True, save=False)
+            >>> train, test = fa.get_features(load=True)
 
         """
         base_dir = self.data_dir + "/output"
@@ -268,5 +291,6 @@ if __name__ == "__main__":
     # Choose features to include in case computation is needed.
     params = {'upper_case': True, 'word_count': True, 'unique_words_count': True,
               'letter_count': True, 'punctuation_count': True, 'little_case': True,
-              'stopwords': True, 'question_or_exclamation': True, 'number_bad_words': True}
-    train, test = FeatureAdder(**params).get_features(df_train, df_test)
+              'stopwords': True, 'question_or_exclamation': True, 'number_bad_words': True, 'sentiment_analysis': True}
+    train, test = FeatureAdder(**params).get_features(df_train, df_test, load=False, save=True)
+    # train, test = FeatureAdder(**params).get_features(load=True)

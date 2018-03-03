@@ -25,6 +25,24 @@ class LogisticPredictor(Predictor):
                                         intercept_scaling=intercept_scaling, class_weight=class_weight,
                                         random_state=random_state, solver=solver, max_iter=max_iter,
                                         multi_class=multi_class, verbose=verbose, warm_start=warm_start, n_jobs=n_jobs)
+
+        # Parameters need to be included for cross_validation to work.
+        self.penalty = penalty
+        self.dual = dual
+        self.tol = tol
+        self.C = C
+        self.fit_intercept = fit_intercept
+        self.intercept_scaling = intercept_scaling
+        self.class_weight = class_weight
+        self.random_state = random_state
+        self.solver = solver
+        self.max_iter = max_iter
+        self.multi_class = multi_class
+        self.verbose = verbose
+        self.warm_start = warm_start
+        self.n_jobs = n_jobs
+
+        # Used for internal representation
         self.r = None
 
     def fit(self, train_x, train_y, **params):
@@ -72,6 +90,20 @@ class SVMPredictor(Predictor):
         self.model = LinearSVC(penalty=penalty, loss=loss, dual=dual, tol=tol, C=C, multi_class=multi_class,
                                fit_intercept=fit_intercept, intercept_scaling=intercept_scaling,
                                class_weight=class_weight, verbose=verbose, random_state=random_state, max_iter=max_iter)
+
+        # Parameters need to be included for cross_validation to work.
+        self.dual = dual
+        self.tol = tol
+        self.C = C
+        self.multi_class = multi_class
+        self.fit_intercept = fit_intercept
+        self.intercept_scaling = intercept_scaling
+        self.class_weight = class_weight
+        self.verbose = verbose
+        self.random_state = random_state
+        self.max_iter = max_iter
+        self.penalty = penalty
+        self.loss = loss
 
     def fit(self, train_x, train_y, **params):
         """
