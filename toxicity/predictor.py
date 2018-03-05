@@ -26,6 +26,7 @@ class Predictor(BaseEstimator, ClassifierMixin):
 
         :param params: a dictionary of named model parameters
         :param name: Optional model name, used for logging
+
         """
         self.name = name
 
