@@ -23,7 +23,6 @@ class Predictor(BaseEstimator, ClassifierMixin):
         """
         Base constructor. The input training is expected to be preprocessed and contain
         features extracted for each sample along with the true values for one of the 6 tags.
-
         :param params: a dictionary of named model parameters
         :param name: Optional model name, used for logging
         """
