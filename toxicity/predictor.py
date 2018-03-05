@@ -1,7 +1,7 @@
 from abc import abstractmethod
 import numpy as np
 from collections import Counter
-from sklearn.metrics import log_loss
+from sklearn.metrics import log_loss, roc_auc_score
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedShuffleSplit
 from sklearn.base import BaseEstimator, ClassifierMixin
 
@@ -26,6 +26,7 @@ class Predictor(BaseEstimator, ClassifierMixin):
 
         :param params: a dictionary of named model parameters
         :param name: Optional model name, used for logging
+
         """
         self.name = name
 
@@ -39,7 +40,7 @@ class Predictor(BaseEstimator, ClassifierMixin):
         """
 
     def score(self, x, y, sample_weight=None):
-        return log_loss(y, self.predict_proba(x))
+        return roc_auc_score(y, self.predict_proba(x))
 
     @abstractmethod
     def predict(self, test_x):
@@ -98,7 +99,7 @@ class Predictor(BaseEstimator, ClassifierMixin):
             for tag in range(0, len(TAGS)):
                 self.fit(train_x, train_ys[:, tag])
                 predictions = self.predict_proba(val_x)
-                losses.append(log_loss(val_ys[:, tag], predictions))
+                losses.append(roc_auc_score(val_ys[:, tag], predictions))
             scores.append(np.mean(losses))
 
         return np.mean(scores)
@@ -134,7 +135,7 @@ class Predictor(BaseEstimator, ClassifierMixin):
                                                                   random_state=RANDOM_STATE)
                 self.fit(train_x, train_y)
                 predictions = self.predict_proba(val_x)
-                losses.append(log_loss(val_y, predictions))
+                losses.append(roc_auc_score(val_y, predictions))
             return np.mean(losses)
 
         raise ValueError("Method must be either 'stratified_CV', 'CV' or 'split', not {}".format(method))

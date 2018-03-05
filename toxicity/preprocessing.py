@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
-from gensim import corpora, models
+#from gensim import corpora, models
 
 from utils import timing, save_sparse_csr, load_sparse_csr
 import os
