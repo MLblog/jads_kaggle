@@ -1,7 +1,7 @@
 from abc import abstractmethod
 import numpy as np
 from collections import Counter
-from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedShuffleSplit
 from sklearn.base import BaseEstimator, ClassifierMixin
 
