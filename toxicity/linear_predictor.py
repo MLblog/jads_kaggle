@@ -167,7 +167,7 @@ class RFPredictor(Predictor):
         :param test_x: a (potentially sparse) array of shape: (n_samples, n_features)
         :return: The predicted probabilities for each sample
         """
-        return self.model.predict_proba(test_x)
+        return self.model.predict_proba(test_x)[:, 1]
 
     def predict(self, test_x):
         """
@@ -198,6 +198,25 @@ class XGBPredictor(Predictor):
                                    scale_pos_weight=scale_pos_weight, base_score=base_score,
                                    seed=seed, missing=missing)
 
+        # Parameters need to be included for cross_validation to work.
+        self.max_depth = int(max_depth)
+        self.learning_rate = learning_rate
+        self.n_estimators = n_estimators
+        self.silent = silent
+        self.objective = objective
+        self.gamma = gamma
+        self.min_child_weight = min_child_weight
+        self.max_delta_step = max_delta_step
+        self.subsample = subsample
+        self.colsample_bytree = colsample_bytree
+        self.colsample_bylevel = colsample_bylevel
+        self.reg_alpha = reg_alpha
+        self.reg_lambda = reg_lambda
+        self.scale_pos_weight = scale_pos_weight
+        self.base_score = base_score
+        self.seed = seed
+        self.missing = missing
+
     def fit(self, train_x, train_y, **params):
         """
         A function that fits the predictor to the provided dataset.
@@ -214,7 +233,7 @@ class XGBPredictor(Predictor):
         :param test_x: a (potentially sparse) array of shape: (n_samples, n_features)
         :return: The predicted probabilities for each sample
         """
-        return self.model.predict_proba(test_x)
+        return self.model.predict_proba(test_x)[:, 1]
 
     def predict(self, test_x):
         """
