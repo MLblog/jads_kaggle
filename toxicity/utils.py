@@ -43,7 +43,7 @@ def scalate_data(train, test):
 
 
 def create_submission(predictor, train_x, train_ys, test_x, train_id, test_id,
-                      write_to, data_source_nature, to_ensamble=True, data_dir='data/output', predictor_name=None):
+                      write_to, data_source_nature, to_ensemble=False, data_dir='data/output'):
     """
     Creates a submissions file for the given test set
 
@@ -53,7 +53,7 @@ def create_submission(predictor, train_x, train_ys, test_x, train_id, test_id,
     :param test_x: The (preprocessed) features to be used for predicting.
     :param write_to: A file path where the submission is written
     :param data_source_nature: string with the name of the data source
-    :param to_ensamble: Boolean. True if the output will be ensembled
+    :param to_ensemble: Boolean. True if the output will be ensembled
     :param data_dir: path where the outputs files will be saved
     :param predictor: string with the name of the predictor model used
     """
@@ -63,20 +63,15 @@ def create_submission(predictor, train_x, train_ys, test_x, train_id, test_id,
         print("{} Fitting on {} tag".format(predictor, tag))
         predictor.fit(train_x, train_ys[tag])
         submission[tag] = predictor.predict_proba(test_x)
-        if to_ensamble:
+        if to_ensemble:
             train_ensemble[tag] = predictor.predict_proba(train_x)
 
     submission.to_csv(write_to, index=False)
     print("Submissions created at location " + write_to)
 
-    if to_ensamble:
-        predictors_names = ['LogisticPredictor', 'SVMPredictor', 'RFPredictor', 'XGBPredictor']
-        # Check if the predictor name is valid
-        if predictor_name not in predictors_names:
-            raise ValueError('The predictor_name is not defined on the list {}'.format(predictors_names))
-
+    if to_ensemble:
         # Create a directory if it does not exits
-        base_dir = data_dir + '/' + predictor_name
+        base_dir = data_dir + '/' + predictor.name
         if not os.path.exists(base_dir):
             os.makedirs(base_dir)
 
