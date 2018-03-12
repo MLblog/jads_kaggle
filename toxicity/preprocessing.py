@@ -191,9 +191,54 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
     if remove_numbers_function:
         train, test = remove_numbers(train, test)
 
-    re_tok = re.compile(f'([{string.punctuation}“”¨«»®´·º½¾¿¡§£₤‘’])')
-
-    def tokenizer(s): return re_tok.sub(r' \1 ', s).split()
+    if stemming:
+        def tokenizer_stemming(s):
+            stemmer = nltk.stem.PorterStemmer()
+            tokens = nltk.word_tokenize(s)
+            stems = []
+            for item in tokens:
+                try:
+                    stems.append(stemmer.stem(item))
+                except RecursionError:
+                    stems.append('Big_word')
+            return stems
+    elif lemmatization:
+        def tokenizer_lemmatization(s):
+            lemmatizer = nltk.stem.WordNetLemmatizer()
+            lem = []
+            for item, tag in nltk.pos_tag(nltk.word_tokenize(s)):
+                if tag.startswith("NN"):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='n'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('VB'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='v'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('JJ'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='a'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('R'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='r'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                else:
+                    try:
+                        lem.append(lemmatizer.lemmatize(item))
+                    except RecursionError:
+                        lem.append('Big_word')
+            return lem
+    else:
+        def tokenizer(s):
+            try:
+                return nltk.word_tokenize(s)
+            except TypeError:
+                return ["UNKNOWN"]
 
     if not params:
         params = {
