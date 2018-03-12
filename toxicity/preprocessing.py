@@ -192,7 +192,7 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
         train, test = remove_numbers(train, test)
 
     if stemming:
-        def tokenizer_stemming(s):
+        def tokenizer(s):
             stemmer = nltk.stem.PorterStemmer()
             tokens = nltk.word_tokenize(s)
             stems = []
@@ -203,7 +203,7 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
                     stems.append('Big_word')
             return stems
     elif lemmatization:
-        def tokenizer_lemmatization(s):
+        def tokenizer(s):
             lemmatizer = nltk.stem.WordNetLemmatizer()
             lem = []
             for item, tag in nltk.pos_tag(nltk.word_tokenize(s)):
