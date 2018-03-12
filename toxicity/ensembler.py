@@ -66,7 +66,7 @@ class Ensemble(object):
         Parameters
         -------------------------------------------------------------------
         params: the parameters to tune the predictor
-        predictor: the predictor thatis used to ensemble 
+        predictor: the predictor thatis used to ensemble
         """
         models_name = self._get_models_name(self.data_dir)
         if type(models_name) != list:
@@ -91,7 +91,8 @@ class Ensemble(object):
         print('The performance score must be {}'.format(round(best_score, 2)))
         _predictor = predictor(**best_params)
         create_submission(_predictor, train, self.train_y, test, self.train_id, self.test_id,
-                          write_to='data/output/submission_{}_ensembler.csv'.format(predictor.name), data_source_nature='sparce_matrix', to_ensamble=False)
+                          write_to='data/output/submission_{}_ensembler.csv'.format(predictor.name),
+                          data_source_nature='sparce_matrix', to_ensamble=False)
 
     def mean_ensembler(self):
         """
