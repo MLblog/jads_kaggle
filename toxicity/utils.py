@@ -52,6 +52,10 @@ def create_submission(predictor, train_x, train_ys, test_x, train_id, test_id,
     :param train_ys: A dictionary from tag name to its values in the training set.
     :param test_x: The (preprocessed) features to be used for predicting.
     :param write_to: A file path where the submission is written
+    :param data_source_nature: string with the name of the data source
+    :param to_ensamble: Boolean. True if the output will be ensembled
+    :param data_dir: path where the outputs files will be saved
+    :param predictor: string with the name of the predictor model used
     """
     submission = pd.DataFrame({'id': test_id})
     train_ensemble = pd.DataFrame({'id': train_id})
