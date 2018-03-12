@@ -2,6 +2,8 @@ import time
 import pandas as pd
 import numpy as np
 from scipy.sparse import csr_matrix
+import os
+from sklearn import preprocessing
 
 TAGS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 
@@ -23,7 +25,25 @@ def timing(f):
     return wrap
 
 
-def create_submission(predictor, train_x, train_ys, test_x, test_id, write_to):
+def scalate_data(train, test):
+    """
+    Creates an scaled version of the train and test sets. This step is necesary to
+    use algorithms suc as SVM
+
+    Parameters
+    -------------------------
+    train and test: test and train sets. Both most have the same structure
+
+    Returns
+    --------------------------
+    scaled train and test sets
+    """
+    scaler = preprocessing.StandardScaler().fit(train)
+    return scaler.transform(train), scaler.transform(test)
+
+
+def create_submission(predictor, train_x, train_ys, test_x, train_id, test_id,
+                      write_to, data_source_nature, to_ensamble=True, data_dir='data/output', predictor_name=None):
     """
     Creates a submissions file for the given test set
 
@@ -32,16 +52,37 @@ def create_submission(predictor, train_x, train_ys, test_x, test_id, write_to):
     :param train_ys: A dictionary from tag name to its values in the training set.
     :param test_x: The (preprocessed) features to be used for predicting.
     :param write_to: A file path where the submission is written
+    :param data_source_nature: string with the name of the data source
+    :param to_ensamble: Boolean. True if the output will be ensembled
+    :param data_dir: path where the outputs files will be saved
+    :param predictor: string with the name of the predictor model used
     """
-
     submission = pd.DataFrame({'id': test_id})
+    train_ensemble = pd.DataFrame({'id': train_id})
     for tag in TAGS:
         print("{} Fitting on {} tag".format(predictor, tag))
         predictor.fit(train_x, train_ys[tag])
-        submission[tag] = predictor.predict(test_x)
+        submission[tag] = predictor.predict_proba(test_x)
+        if to_ensamble:
+            train_ensemble[tag] = predictor.predict_proba(train_x)
 
     submission.to_csv(write_to, index=False)
     print("Submissions created at location " + write_to)
+
+    if to_ensamble:
+        predictors_names = ['LogisticPredictor', 'SVMPredictor', 'RFPredictor', 'XGBPredictor']
+        # Check if the predictor name is valid
+        if predictor_name not in predictors_names:
+            raise ValueError('The predictor_name is not defined on the list {}'.format(predictors_names))
+
+        # Create a directory if it does not exits
+        base_dir = data_dir + '/' + predictor_name
+        if not os.path.exists(base_dir):
+            os.makedirs(base_dir)
+
+        # Create files
+        submission.to_csv(base_dir + '/' + 'test_y_' + data_source_nature + '.csv', index=False)
+        train_ensemble.to_csv(base_dir + '/' + 'train_y_' + data_source_nature + '.csv', index=False)
 
 
 def save_sparse_csr(filename, matrix):
