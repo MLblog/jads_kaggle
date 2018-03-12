@@ -172,7 +172,7 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
 
 @check_compatibility
 @timing
-def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
+def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, stemming=True, lemmatization=False):
     """
     Performs Pre_procesing of the data set and tokenization
     Each input is numpy array:
@@ -262,7 +262,7 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
     return train, test
 
 
-def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False, load=True, data_dir="data"):
+def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False, load=True, data_dir="data", stemming=True, lemmatization=False):
     """
     Get sparse matrix form of the train and test set
 
@@ -306,7 +306,7 @@ def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_functio
 
     else:
         print('Computing the sparse matrixes, this will take a while...!')
-        train, test = tf_idf(train, test, params, remove_numbers_function, debug)
+        train, test = tf_idf(train, test, params, remove_numbers_function, debug, stemming, lemmatization)
 
     if save:
         print('Saving train file as {}'.format(name_train))
