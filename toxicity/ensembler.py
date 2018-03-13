@@ -7,9 +7,45 @@ from linear_predictor import XGBPredictor
 from tuning import bayesian_optimization
 from utils import create_submission
 
+TAGS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
+
+
+def create_ensemble_output(predictor, train_x, train_ys, test_x, train_id, test_id,
+                           data_source_nature, write_to='data/output'):
+    """
+    Creates the output files for the ensemble algorithm
+
+    :param predictor: The predictor to be used for fitting and predicting
+    :param train_x: The (preprocessed) features to be used for fitting
+    :param train_ys: A dictionary from tag name to its values in the training set.
+    :param test_x: The (preprocessed) features to be used for predicting.
+    :param write_to: A file path where the submission is written
+    :param data_source_nature: string with the name of the data source
+    :param to_ensemble: Boolean. True if the output will be ensembled
+    :param data_dir: path where the outputs files will be saved
+    :param predictor: string with the name of the predictor model used
+    """
+    base_dir = write_to + '/' + predictor.name
+
+    if not os.path.exists(base_dir):
+        os.makedirs(base_dir)
+
+    train = pd.DataFrame({'id': train_id})
+    test = pd.DataFrame({'id': test_id})
+
+    for tag in TAGS:
+        print("{} Fitting on {} tag".format(predictor, tag))
+        predictor.fit(train_x, train_ys[tag])
+        train[tag] = predictor.predict_proba(train_x)
+        test[tag] = predictor.predict_proba(test_x)
+
+    test.to_csv(base_dir + '/' + 'test_y_' + data_source_nature + '.csv', index=False)
+    train.to_csv(base_dir + '/' + 'train_y_' + data_source_nature + '.csv', index=False)
+    print("Submissions created at location " + base_dir)
+
 
 class Ensemble(object):
-    def __init__(self, train_y, test_id, tags, data_dir='data/output/'):
+    def __init__(self, train_y, test_id, train_id, tags, data_dir='data/output/'):
         """
         This class creates an ensemble solution from the predictors. The models
         can be ensembled using its mean or XGBoots
@@ -23,6 +59,7 @@ class Ensemble(object):
         """
         self.train_y = train_y
         self.test_id = test_id
+        self.train_id = train_id
         self.TAGS = tags
         self.data_dir = data_dir
 
@@ -90,9 +127,9 @@ class Ensemble(object):
 
         print('The performance score must be {}'.format(round(best_score, 2)))
         _predictor = predictor(**best_params)
-        create_submission(_predictor, train, self.train_y, test, self.train_id, self.test_id,
-                          write_to='data/output/submission_{}_ensembler.csv'.format(predictor.name),
-                          data_source_nature='sparce_matrix', to_ensamble=False)
+
+        create_submission(_predictor, train, self.train_y, test, self.test_id,
+                          write_to='data/output/submission_{}_ensembler.csv'.format(predictor.name))
 
     def mean_ensembler(self):
         """
