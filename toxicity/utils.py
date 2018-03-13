@@ -2,7 +2,6 @@ import time
 import pandas as pd
 import numpy as np
 from scipy.sparse import csr_matrix
-import os
 from sklearn import preprocessing
 
 TAGS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
@@ -42,8 +41,7 @@ def scalate_data(train, test):
     return scaler.transform(train), scaler.transform(test)
 
 
-def create_submission(predictor, train_x, train_ys, test_x, train_id, test_id,
-                      write_to, data_source_nature, to_ensemble=False, data_dir='data/output'):
+def create_submission(predictor, train_x, train_ys, test_x, test_id, write_to):
     """
     Creates a submissions file for the given test set
 
@@ -52,32 +50,16 @@ def create_submission(predictor, train_x, train_ys, test_x, train_id, test_id,
     :param train_ys: A dictionary from tag name to its values in the training set.
     :param test_x: The (preprocessed) features to be used for predicting.
     :param write_to: A file path where the submission is written
-    :param data_source_nature: string with the name of the data source
-    :param to_ensemble: Boolean. True if the output will be ensembled
-    :param data_dir: path where the outputs files will be saved
-    :param predictor: string with the name of the predictor model used
     """
     submission = pd.DataFrame({'id': test_id})
-    train_ensemble = pd.DataFrame({'id': train_id})
+
     for tag in TAGS:
         print("{} Fitting on {} tag".format(predictor, tag))
         predictor.fit(train_x, train_ys[tag])
         submission[tag] = predictor.predict_proba(test_x)
-        if to_ensemble:
-            train_ensemble[tag] = predictor.predict_proba(train_x)
 
     submission.to_csv(write_to, index=False)
     print("Submissions created at location " + write_to)
-
-    if to_ensemble:
-        # Create a directory if it does not exits
-        base_dir = data_dir + '/' + predictor.name
-        if not os.path.exists(base_dir):
-            os.makedirs(base_dir)
-
-        # Create files
-        submission.to_csv(base_dir + '/' + 'test_y_' + data_source_nature + '.csv', index=False)
-        train_ensemble.to_csv(base_dir + '/' + 'train_y_' + data_source_nature + '.csv', index=False)
 
 
 def save_sparse_csr(filename, matrix):
