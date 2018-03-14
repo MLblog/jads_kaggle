@@ -98,12 +98,12 @@ class Ensemble(object):
 
     def meta_learner(self, params, predictor=XGBPredictor):
         """
-        Ensembler method that uses XGBoost
+        meta learner funtion
 
         Parameters
         -------------------------------------------------------------------
         params: the parameters to tune the predictor
-        predictor: the predictor thatis used to ensemble
+        predictor: the predictor that is used to ensemble. By defauld is XGBPredictor
         """
         models_name = self._get_models_name(self.data_dir)
         if type(models_name) != list:
@@ -133,11 +133,8 @@ class Ensemble(object):
 
     def mean_ensembler(self):
         """
-        Ensembler method that uses the average
+        Ensembler method that uses the average of all predictors
 
-        Parameters
-        -------------------------------------------------------------------
-        params: the parameters to tune the XGBoost algorithm
         """
         models_name = self._get_models_name(self.data_dir)
         if type(models_name) != list:
