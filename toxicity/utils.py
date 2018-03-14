@@ -24,7 +24,7 @@ def timing(f):
     return wrap
 
 
-def scalate_data(train, test):
+def scale_data(train, test):
     """
     Creates an scaled version of the train and test sets. This step is necesary to
     use algorithms suc as SVM
