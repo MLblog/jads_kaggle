@@ -36,6 +36,7 @@ def remove_numbers(train, test):
     return train, test
 
 
+@check_compatibility
 @timing
 def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
                       use_own_tfidf=False, force_compute=False, report_progress=False,
@@ -166,23 +167,16 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
 
     # Transform into a 2D array format.
     print("Reformatting output to a 2D array, this will take a while...")
-    
-    def safe_get(x):
-        print(x)
-        try:
-            return x[1]
-        except IndexError:
-            return np.zeros(num_topics)
-
-    values = np.vectorize(safe_get)
+    values = np.vectorize(lambda x: x[1])
     return values(np.array(train)), values(np.array(test))
+
 
 @check_compatibility
 @timing
-def truncatedSVD_preprocess(train, test, num_topics=500, report_progress=False,
+def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
                             data_dir='data/', save=False):
 
-    """ Use Latent Semantic Analysis (LSA/LSI) to a dense matrix representation of the input text.
+    """ Use Latent Semantic Analysis (LSA/LSI) to obtain a dense matrix representation of the input text.
 
     Parameters
     ----------
