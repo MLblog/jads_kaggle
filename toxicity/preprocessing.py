@@ -233,9 +233,12 @@ def truncatedSVD_preprocess(train, test, num_topics=500, report_progress=False,
     x_test = svd.transform(test_tfidf)
 
     # save and return data
+    x_train = pd.DataFrame(x_train)
+    x_test = pd.DataFrame(x_test)
+
     if save:
-        np.save(data_dir+"train_"+str(int(num_topics)), x_train)
-        np.save(data_dir+"test_"+str(int(num_topics)), x_test)
+        x_train.to_csv(data_dir+"train_"+str(int(num_topics)))
+        x_test.to_csv(data_dir+"test_"+str(int(num_topics)))
 
     progress("Dimensionality reduction completed.")
     return x_train, x_test
