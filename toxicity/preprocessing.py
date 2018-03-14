@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
 from gensim import corpora, models
 
 from utils import timing, save_sparse_csr, load_sparse_csr
@@ -172,9 +173,76 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
 
 @check_compatibility
 @timing
+def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
+                            data_dir='data/', save=False):
+
+    """ Use Latent Semantic Analysis (LSA/LSI) to obtain a dense matrix representation of the input text.
+
+    Parameters
+    ----------
+    :param train: The training set as a pd.Dataframe including the free text column "comment_text".
+    :param test: The test set as a pd.Dataframe including the free text column "comment_text".
+    :param num_topics: Number of columns (features) in the output matrices.
+    :report_progress: If True, progress will be reported when each computationally expensive step is starting.
+    :data_dir: Path to the base data directory. Used to call this method from anywhere.
+               For example a notebook would provide `data_dir='../data'`
+
+    Returns
+    -------
+    :return: (train, test) datasets as 2D np.ndarrays of shape (num_comments, `num_topics`)
+    """
+
+    def progress(msg):
+        """Helper to conditionally print progress messages to std:out."""
+        if report_progress:
+            print(msg)
+
+    # create lists of comments/strings
+    train_text = train["comment_text"].tolist()
+    test_text = test["comment_text"].tolist()
+    all_text = train_text + test_text
+
+    # use sklearn's TF-IDF in combination with NLTK's tokenizer
+    progress("Creating TF-IDF model and representations..")
+    tfidf_model = TfidfVectorizer(input='content',
+                                  encoding='utf-8',
+                                  decode_error='strict',
+                                  lowercase=True,
+                                  tokenizer=nltk.word_tokenize,
+                                  analyzer='word',
+                                  stop_words=None)
+
+    tfidf_model.fit(all_text)
+    train_tfidf = tfidf_model.transform(train_text)
+    test_tfidf = tfidf_model.transform(test_text)
+    whole_tfidf = tfidf_model.transform(all_text)
+
+    # Feed the TF-IDF representation to the dimensionality reduction model.
+    progress("Fitting SVD to all data..")
+    svd = TruncatedSVD(n_components=num_topics, n_iter=7)
+    svd.fit(whole_tfidf)
+
+    progress("Transforming train and test sets..")
+    x_train = svd.transform(train_tfidf)
+    x_test = svd.transform(test_tfidf)
+
+    # save and return data
+    x_train = pd.DataFrame(x_train)
+    x_test = pd.DataFrame(x_test)
+
+    if save:
+        x_train.to_csv(data_dir+"train_"+str(int(num_topics)))
+        x_test.to_csv(data_dir+"test_"+str(int(num_topics)))
+
+    progress("Dimensionality reduction completed.")
+    return x_train, x_test
+
+
+@check_compatibility
+@timing
 def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
     """
-    Performs Pre_procesing of the data set and tokenization
+    Performs preprocessing of the data set and tokenization
     Each input is numpy array:
     train: Text to train the model
     test: test to test the model
