@@ -1,5 +1,3 @@
-import re
-import string
 import pandas as pd
 import numpy as np
 import nltk
@@ -233,6 +231,8 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
                     except RecursionError:
                         lem.append('Big_word')
             return lem
+    elif lemmatization + stemming == 2:
+        raise ValueError("It is not possible to apply both stemming and lemmatization. Please choose one of them.")
     else:
         def tokenizer(s):
             try:
@@ -262,7 +262,8 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
     return train, test
 
 
-def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False, load=True, data_dir="data", stemming=True, lemmatization=False):
+def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False,
+                      load=True, data_dir="data", stemming=True, lemmatization=False):
     """
     Get sparse matrix form of the train and test set
 
