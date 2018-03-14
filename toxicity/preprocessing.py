@@ -224,6 +224,7 @@ def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
         test_tfidf = tfidf_model.transform(test_text)
         whole_tfidf = tfidf_model.transform(all_text)
 
+
     # Feed the TF-IDF representation to the dimensionality reduction model.
     progress("Fitting SVD to all data..")
     svd = TruncatedSVD(n_components=num_topics, n_iter=7)
@@ -243,7 +244,6 @@ def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
 
     progress("Dimensionality reduction completed.")
     return x_train, x_test
-
 
 @timing
 def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
