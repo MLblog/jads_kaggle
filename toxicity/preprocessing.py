@@ -106,8 +106,7 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
     if use_own_tfidf:
         # Untested yet but I hope it works. I mean, why wouldn't it right?
         progress("Using our own version of TF-IDF, this will take a while...")
-        train_tfidf, test_tfidf = tf_idf(train, test, **tfidf_params)
-        whole_tfidf = train_tfidf + test_tfidf
+        train_tfidf, test_tfidf, whole_tfidf = tf_idf(train, test, **tfidf_params)
 
     else:
         # Use gensims TFIDF model - Tested while under the influence of 10 beers.
@@ -174,7 +173,7 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
 @check_compatibility
 @timing
 def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
-                            data_dir='data/', save=False):
+                            use_own_tfidf=True, data_dir='data/', save=False, **tfidf_params):
 
     """ Use Latent Semantic Analysis (LSA/LSI) to obtain a dense matrix representation of the input text.
 
@@ -184,6 +183,7 @@ def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
     :param test: The test set as a pd.Dataframe including the free text column "comment_text".
     :param num_topics: Number of columns (features) in the output matrices.
     :report_progress: If True, progress will be reported when each computationally expensive step is starting.
+    :use_own_tfidf: If True, uses our own implementation of tfidf.
     :data_dir: Path to the base data directory. Used to call this method from anywhere.
                For example a notebook would provide `data_dir='../data'`
 
@@ -202,20 +202,27 @@ def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
     test_text = test["comment_text"].tolist()
     all_text = train_text + test_text
 
-    # use sklearn's TF-IDF in combination with NLTK's tokenizer
-    progress("Creating TF-IDF model and representations..")
-    tfidf_model = TfidfVectorizer(input='content',
-                                  encoding='utf-8',
-                                  decode_error='strict',
-                                  lowercase=True,
-                                  tokenizer=nltk.word_tokenize,
-                                  analyzer='word',
-                                  stop_words=None)
+    # create the TF-IDF representation needed for dimensionality reduction.
+    if use_own_tfidf:
+        # Untested yet but I hope it works. I mean, why wouldn't it right?
+        progress("Using our own version of TF-IDF, this will take a while...")
+        train_tfidf, test_tfidf, whole_tfidf = tf_idf(train, test, **tfidf_params)
 
-    tfidf_model.fit(all_text)
-    train_tfidf = tfidf_model.transform(train_text)
-    test_tfidf = tfidf_model.transform(test_text)
-    whole_tfidf = tfidf_model.transform(all_text)
+    else:
+        # use sklearn's TF-IDF in combination with NLTK's tokenizer
+        progress("Creating TF-IDF model and representations..")
+        tfidf_model = TfidfVectorizer(input='content',
+                                      encoding='utf-8',
+                                      decode_error='strict',
+                                      lowercase=True,
+                                      tokenizer=nltk.word_tokenize,
+                                      analyzer='word',
+                                      stop_words=None)
+
+        tfidf_model.fit(all_text)
+        train_tfidf = tfidf_model.transform(train_text)
+        test_tfidf = tfidf_model.transform(test_text)
+        whole_tfidf = tfidf_model.transform(all_text)
 
     # Feed the TF-IDF representation to the dimensionality reduction model.
     progress("Fitting SVD to all data..")
@@ -231,14 +238,13 @@ def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
     x_test = pd.DataFrame(x_test)
 
     if save:
-        x_train.to_csv(data_dir+"train_"+str(int(num_topics)))
-        x_test.to_csv(data_dir+"test_"+str(int(num_topics)))
+        x_train.to_csv(data_dir+"train_"+str(int(num_topics))+".csv")
+        x_test.to_csv(data_dir+"test_"+str(int(num_topics))+".csv")
 
     progress("Dimensionality reduction completed.")
     return x_train, x_test
 
 
-@check_compatibility
 @timing
 def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
     """
@@ -276,13 +282,15 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
         }
     vec = TfidfVectorizer(**params)
 
-    train = vec.fit_transform(train["comment_text"])
+    all_text = train["comment_text"].tolist()+test["comment_text"].tolist()
+    whole = vec.fit_transform(all_text)
+    train = vec.transform(train["comment_text"])
     test = vec.transform(test["comment_text"])
 
     if debug:
         print("Removing these tokens:\n{}".format(vec.stop_words_))
 
-    return train, test
+    return train, test, whole
 
 
 def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False, load=True, data_dir="data"):
@@ -329,7 +337,7 @@ def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_functio
 
     else:
         print('Computing the sparse matrixes, this will take a while...!')
-        train, test = tf_idf(train, test, params, remove_numbers_function, debug)
+        train, test, _ = tf_idf(train, test, params, remove_numbers_function, debug)
 
     if save:
         print('Saving train file as {}'.format(name_train))

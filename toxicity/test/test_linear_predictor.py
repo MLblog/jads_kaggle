@@ -21,7 +21,7 @@ class TestLinearPredictor(unittest.TestCase):
         self.test = pd.read_csv(test_file, nrows=TestLinearPredictor.number_of_rows)
         self.y_train = {tag: self.train[tag].values for tag in utils.TAGS}
         self.logistic_predictor = LogisticPredictor(**TestLinearPredictor.lr_params)
-        self.train, self.test = tf_idf(self.train, self.test)
+        self.train, self.test, _ = tf_idf(self.train, self.test)
 
     def test_stratified(self):
         loss = self.logistic_predictor.evaluate(self.train, self.y_train, method='stratified_CV')

@@ -3,7 +3,10 @@ import multiprocessing
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
+try:
+    from xgboost import XGBClassifier
+except ImportError:
+    print("XGBoost not imported.")
 from predictor import Predictor
 
 
