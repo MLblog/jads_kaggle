@@ -262,7 +262,7 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
 
     if remove_numbers_function:
         train, test = remove_numbers(train, test)
-        
+
     if lemmatization + stemming == 2:
         raise ValueError("It is not possible to apply both stemming and lemmatization. Please choose one of them.")
     if stemming:
