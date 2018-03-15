@@ -1,5 +1,3 @@
-import re
-import string
 import pandas as pd
 import numpy as np
 import nltk
@@ -246,7 +244,7 @@ def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
 
 
 @timing
-def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
+def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, stemming=True, lemmatization=False):
     """
     Performs preprocessing of the data set and tokenization
     Each input is numpy array:
@@ -265,9 +263,56 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
     if remove_numbers_function:
         train, test = remove_numbers(train, test)
 
-    re_tok = re.compile(f'([{string.punctuation}“”¨«»®´·º½¾¿¡§£₤‘’])')
-
-    def tokenizer(s): return re_tok.sub(r' \1 ', s).split()
+    if lemmatization + stemming == 2:
+        raise ValueError("It is not possible to apply both stemming and lemmatization. Please choose one of them.")
+    if stemming:
+        def tokenizer(s):
+            stemmer = nltk.stem.PorterStemmer()
+            tokens = nltk.word_tokenize(s)
+            stems = []
+            for item in tokens:
+                try:
+                    stems.append(stemmer.stem(item))
+                except RecursionError:
+                    stems.append('Big_word')
+            return stems
+    elif lemmatization:
+        def tokenizer(s):
+            lemmatizer = nltk.stem.WordNetLemmatizer()
+            lem = []
+            for item, tag in nltk.pos_tag(nltk.word_tokenize(s)):
+                if tag.startswith("NN"):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='n'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('VB'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='v'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('JJ'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='a'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('R'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='r'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                else:
+                    try:
+                        lem.append(lemmatizer.lemmatize(item))
+                    except RecursionError:
+                        lem.append('Big_word')
+            return lem
+    else:
+        def tokenizer(s):
+            try:
+                return nltk.word_tokenize(s)
+            except TypeError:
+                return ["UNKNOWN"]
 
     if not params:
         params = {
@@ -282,7 +327,7 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
         }
     vec = TfidfVectorizer(**params)
 
-    all_text = train["comment_text"].tolist()+test["comment_text"].tolist()
+    all_text = train["comment_text"].tolist() + test["comment_text"].tolist()
     whole = vec.fit_transform(all_text)
     train = vec.transform(train["comment_text"])
     test = vec.transform(test["comment_text"])
@@ -293,7 +338,8 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
     return train, test, whole
 
 
-def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False, load=True, data_dir="data"):
+def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False,
+                      load=True, data_dir="data", stemming=True, lemmatization=False):
     """
     Get sparse matrix form of the train and test set
 
@@ -334,10 +380,9 @@ def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_functio
         else:
             raise ValueError("You asked to load the features but they were not found"
                              + "at the specified location: \n{}\n{}".format(name_train, name_test))
-
     else:
         print('Computing the sparse matrixes, this will take a while...!')
-        train, test, _ = tf_idf(train, test, params, remove_numbers_function, debug)
+        train, test, _ = tf_idf(train, test, params, remove_numbers_function, debug, stemming, lemmatization)
 
     if save:
         print('Saving train file as {}'.format(name_train))
