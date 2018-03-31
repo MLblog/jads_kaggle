@@ -40,11 +40,11 @@ More information can be found in the [userguide](https://virtualenv.pypa.io/en/s
 
 # Deleting a Conda Virtual Environment
 
-In order to delete a conda virtual enviromen you can:
+In order to delete a conda virtual environment you can:
 
-1. Search the conda enviroments that are setted in you machine using `conda info --envs`
-2. Go to the work directory where your virtual enviroment is set using `cd ../conda_eviroment`
-3. Remove the virtual enviroment using `remove --name conda_eviroment --all`
+1. Search the conda environments that are set in your local machine using `conda info --envs`
+2. Go to the working directory where your virtual environment is set using `cd ../conda_environment`
+3. Remove the virtual environment using `remove --name conda_environment --all`
 
 ## Task 0 - Getting comfortable with pull requests ##
 
