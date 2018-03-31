@@ -27,18 +27,25 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
    
 # Setting up a Virtual Environment
 
-It is very important to make sure we all use the same development environment in order to manage dependencies without conflicts. For example if contributor A pushes a new classifier using some libraries installed on his local machine, then the dependencies will not be met by other contributors after pulling, thus breaking their local copy. In order to ensure an isolated environment we will use `virtualenv`s. 
+It is very important to make sure we all use the same development environment in order to manage dependencies without conflicts. For example if contributor A pushes a new classifier using some libraries installed on his local machine, then the dependencies will not be met by other contributors after pulling, thus breaking their local copy. In order to ensure an isolated environment we will use `virtualenv`. 
 Here are the necessary steps to create and activate one on a windows machine:
 
-1. Make sure you have a relatively clean <a href="https://www.anaconda.com/download/#windows">Anaconda installation</a>.
-2. Create a new [conda virtual environment](https://conda.io/docs/user-guide/tasks/manage-environments.html): `conda create --name kaggle_env --file requirements.txt;` 
-3. Activate the newly created environment: `source activate kaggle_env`. This step should be repeated everytime you start working on the project.
-4. In case you are using an IDE like Pycharm or Spyder, make sure it uses your conda environment as the project interpreter.
-	- Your environment will be by default located at: `<Anaconda Home>/envs/kaggle_env/python.exe`
-	- Default location for `<Anaconda Home>` on Windows is `C:\Users\<username>\AppData\Local\Continuum\anaconda3\`
-5. In case your changes required the installation of extra packages (for example via `conda install <package>` remember to update the `requirements.txt` file: `conda list --explicit > requirements.txt`. 
-   This way others can install them with `conda install --file requirements.txt`
-6. You can leave the virtual enviroment at any time using `source deactivate`
+1. Install `virtualenv` using `pip install virtualenv`
+2. Make sure that you have a relatively clean `base` environment. You can check this using `pip freeze`
+3. Go to the folder where the `jads_kaggle` repository is located using `cd .../jads_kaggle`
+4. Create the virtual environment using `virtualenv kaggle_env`. Note that this new environment will copy all the libraries that exist in the `base` environment
+5. Now your environment is ready to be used. You can activate it using `activate kaggle_env` or deactivate it just using `deactivate` command.
+
+More information can be found in the [userguide](https://virtualenv.pypa.io/en/stable/userguide/)
+
+# Deleting a Conda Virtual Environment
+
+In order to delete a conda virtual enviromen you can:
+
+1. Search the conda enviroments that are setted in you machine using `conda info --envs`
+2. Go to the work directory where your virtual enviroment is set using `cd ../conda_eviroment`
+3. Remove the virtual enviroment using `remove --name conda_eviroment --all`
+
 ## Task 0 - Getting comfortable with pull requests ##
 
 In order to test your understanding of the proposed process you can try a rather minimal contribution:
