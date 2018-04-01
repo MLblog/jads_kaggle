@@ -28,23 +28,25 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
 # Setting up a Virtual Environment
 
 It is very important to make sure we all use the same development environment in order to manage dependencies without conflicts. For example if contributor A pushes a new classifier using some libraries installed on his local machine, then the dependencies will not be met by other contributors after pulling, thus breaking their local copy. In order to ensure an isolated environment we will use `virtualenv`. 
-Here are the necessary steps to create and activate one on a windows machine:
+Here are the necessary steps to create and activate one on a windows machine using command window:
 
 1. Install `virtualenv` using `pip install virtualenv`
-2. Make sure that you have a relatively clean `base` environment. You can check this using `pip freeze`
-3. Go to the folder where the `jads_kaggle` repository is located using `cd .../jads_kaggle`
-4. Create the virtual environment using `virtualenv kaggle_env`. Note that this new environment will copy all the libraries that exist in the `base` environment
-5. Now your environment is ready to be used. You can activate it using `activate kaggle_env` or deactivate it just using `deactivate` command.
+2. Install `pip install virtualenvwrapper-win`
+3. Create the virtual environment using `mkvirtualenv kaggle_env`. This new environment copy all the libraries that exist at the `base environment`. For this reason, be sure that your `base environment` is properly working.
+4. Go to the folder where the `jads_kaggle` repository is located using `cd .../jads_kaggle`
+5. In this folder set `kaggle_env` using the command `setprojectdir .`. Now, every time that you activate `kaggle_env` (using the command `workon kaggle_env`) the path `cd .../jads_kaggle` will be automatically set
+6. To activate the virtual environment in Anaconda, you have to use `Anaconda Prompt` and type `workon kaggle_env`
+7. You can return to the `base environment` anytime using the command 'deactivate'
 
-More information can be found in the [userguide](https://virtualenv.pypa.io/en/stable/userguide/)
+More information can be found in the [userguide](https://virtualenv.pypa.io/en/stable/userguide/) and in the [Blog](http://timmyreilly.azurewebsites.net/python-pip-virtualenv-installation-on-windows/) 
 
 # Deleting a Conda Virtual Environment
 
-In order to delete a conda virtual environment you can:
+In order to delete a conda virtual enviromen you can:
 
-1. Search the conda environments that are set in your local machine using `conda info --envs`
-2. Go to the working directory where your virtual environment is set using `cd ../conda_environment`
-3. Remove the virtual environment using `remove --name conda_environment --all`
+1. Search the conda enviroments that are setted in you machine using `conda info --envs`
+2. Go to the work directory where your virtual enviroment is set using `cd ../conda_eviroment`
+3. Remove the virtual enviroment using `remove --name conda_eviroment --all`
 
 ## Task 0 - Getting comfortable with pull requests ##
 
