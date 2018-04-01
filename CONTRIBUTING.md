@@ -12,7 +12,7 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
 1. <a href="https://github.com/MLblog/jads_kaggle/fork">Fork the repository</a>
 2. Clone your fork: `git clone https://github.com/<YOUR_GITHUB_USERNAME>/jads_kaggle.git`
 3. Create a new branch based on `master`: `git checkout -b my-feature master`. The branch name should explain what functionality it is supposed to add or modify.
-4. Setup your virtual Python enviroment using the latest `anaconda` version (currently `3.6`). Check the [Notes](#setting-up-a-virtual-environment) for how do to that.
+4. Setup your virtual Python environment using the steps metioned at [Notes](#setting-up-a-virtual-environment) for how to do to so.
    Make sure you activate the environment everytime you start working on the project.
 5. Implement your changes.
 6. Check that everything is OK in your branch:
@@ -38,8 +38,6 @@ Here are the necessary steps to create and activate one on a windows machine usi
 6. In this folder set `kaggle_env` using the command `setprojectdir .`. Now, every time that you activate `kaggle_env` (using the command `workon kaggle_env`) the path `cd .../jads_kaggle` will be automatically set
 7. To activate the virtual environment in Anaconda, you have to use `Anaconda Prompt` and type `workon kaggle_env`. To activate the virtual environment in PyCharm type `workon kaggle_env` on the PyCharm terminal
 8. You can return to the `base environment` anytime using the command 'deactivate'
-
-More information can be found in the [userguide](https://virtualenv.pypa.io/en/stable/userguide/) and in the [Blog](http://timmyreilly.azurewebsites.net/python-pip-virtualenv-installation-on-windows/) 
 
 # Deleting a Conda Virtual Environment
 
@@ -81,8 +79,8 @@ The aforementioned process assumes a basic understanding of certain software too
     - [Udacity Course](https://eu.udacity.com/course/how-to-use-git-and-github--ud775) (in case you want a deeper understanding - strongly recommended)
 
 2. Virtual Environments
-    - [Managing environments in Anaconda](https://conda.io/docs/user-guide/getting-started.html#managing-envs)
-    - [Cheat sheet](https://conda.io/docs/user-guide/cheatsheet.html)
+    - [userguide](https://virtualenv.pypa.io/en/stable/userguide/)
+    - [Blog](http://timmyreilly.azurewebsites.net/python-pip-virtualenv-installation-on-windows/)
 
 3. Object Oriented Programming
     - [Classes](https://docs.python.org/3/tutorial/classes.html) in Python. Extensive tutorial containing valuable information.
