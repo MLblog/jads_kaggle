@@ -33,10 +33,10 @@ Here are the necessary steps to create and activate one on a windows machine usi
 1. Install `virtualenv` using `pip install virtualenv`
 2. Install `pip install flake8`
 3. Install `pip install virtualenvwrapper-win`
-4. Create the virtual environment using `mkvirtualenv kaggle_env`. This new environment copy all the libraries that exist at the `base environment`. For this reason, be sure that your `base environment` is properly working.
+4. Create the virtual environment using `mkvirtualenv kaggle_env`
 5. Go to the folder where the `jads_kaggle` repository is located using `cd .../jads_kaggle`
 6. In this folder set `kaggle_env` using the command `setprojectdir .`. Now, every time that you activate `kaggle_env` (using the command `workon kaggle_env`) the path `cd .../jads_kaggle` will be automatically set
-7. To activate the virtual environment in Anaconda, you have to use `Anaconda Prompt` and type `workon kaggle_env`
+7. To activate the virtual environment in Anaconda, you have to use `Anaconda Prompt` and type `workon kaggle_env`. To activate the virtual environment in PyCharm type `workon kaggle_env` on the PyCharm terminal
 8. You can return to the `base environment` anytime using the command 'deactivate'
 
 More information can be found in the [userguide](https://virtualenv.pypa.io/en/stable/userguide/) and in the [Blog](http://timmyreilly.azurewebsites.net/python-pip-virtualenv-installation-on-windows/) 
