@@ -28,16 +28,16 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
 # Setting up a Virtual Environment
 
 It is very important to make sure we all use the same development environment in order to manage dependencies without conflicts. For example if contributor A pushes a new classifier using some libraries installed on his local machine, then the dependencies will not be met by other contributors after pulling, thus breaking their local copy. In order to ensure an isolated environment we will use `virtualenv`. 
-Here are the necessary steps to create and activate one on a windows machine using command window:
+Here are the necessary steps to create and activate one on a windows machine using the command window:
 
 1. Install `virtualenv` using `pip install virtualenv`
 2. Install `pip install flake8`
 3. Install `pip install virtualenvwrapper-win`
 4. Create the virtual environment using `mkvirtualenv kaggle_env`
-5. Go to the folder where the `jads_kaggle` repository is located using `cd .../jads_kaggle`
+5. Go to the folder where the `jads_kaggle` repository is located using `cd .../GitHub/jads_kaggle`
 6. In this folder set `kaggle_env` using the command `setprojectdir .`. Now, every time that you activate `kaggle_env` (using the command `workon kaggle_env`) the path `cd .../jads_kaggle` will be automatically set
 7. To activate the virtual environment in Anaconda, you have to use `Anaconda Prompt` and type `workon kaggle_env`. To activate the virtual environment in PyCharm type `workon kaggle_env` on the PyCharm terminal
-8. You can return to the `base environment` anytime using the command 'deactivate'
+8. You can return to the `base environment` anytime using the command `deactivate`
 
 # Deleting a Conda Virtual Environment
 
