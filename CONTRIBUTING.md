@@ -12,7 +12,7 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
 1. <a href="https://github.com/MLblog/jads_kaggle/fork">Fork the repository</a>
 2. Clone your fork: `git clone https://github.com/<YOUR_GITHUB_USERNAME>/jads_kaggle.git`
 3. Create a new branch based on `master`: `git checkout -b my-feature master`. The branch name should explain what functionality it is supposed to add or modify.
-4. Setup your virtual Python enviroment using the latest `anaconda` version (currently `3.6`). Check the [Notes](#setting-up-a-virtual-environment) for how do to that.
+4. Setup your virtual Python environment using the steps metioned at [Notes](#setting-up-a-virtual-environment) for how to do to so.
    Make sure you activate the environment everytime you start working on the project.
 5. Implement your changes.
 6. Check that everything is OK in your branch:
@@ -27,18 +27,26 @@ Understanding certain steps in the process assumes a basic grasp of certain impo
    
 # Setting up a Virtual Environment
 
-It is very important to make sure we all use the same development environment in order to manage dependencies without conflicts. For example if contributor A pushes a new classifier using some libraries installed on his local machine, then the dependencies will not be met by other contributors after pulling, thus breaking their local copy. In order to ensure an isolated environment we will use `virtualenv`s. 
-Here are the necessary steps to create and activate one on a windows machine:
+It is very important to make sure we all use the same development environment in order to manage dependencies without conflicts. For example if contributor A pushes a new classifier using some libraries installed on his local machine, then the dependencies will not be met by other contributors after pulling, thus breaking their local copy. In order to ensure an isolated environment we will use `virtualenv`. 
+Here are the necessary steps to create and activate one on a windows machine using the command window:
 
-1. Make sure you have a relatively clean <a href="https://www.anaconda.com/download/#windows">Anaconda installation</a>.
-2. Create a new [conda virtual environment](https://conda.io/docs/user-guide/tasks/manage-environments.html): `conda create --name kaggle_env --file requirements.txt;` 
-3. Activate the newly created environment: `source activate kaggle_env`. This step should be repeated everytime you start working on the project.
-4. In case you are using an IDE like Pycharm or Spyder, make sure it uses your conda environment as the project interpreter.
-	- Your environment will be by default located at: `<Anaconda Home>/envs/kaggle_env/python.exe`
-	- Default location for `<Anaconda Home>` on Windows is `C:\Users\<username>\AppData\Local\Continuum\anaconda3\`
-5. In case your changes required the installation of extra packages (for example via `conda install <package>` remember to update the `requirements.txt` file: `conda list --explicit > requirements.txt`. 
-   This way others can install them with `conda install --file requirements.txt`
-6. You can leave the virtual enviroment at any time using `source deactivate`
+1. Install `virtualenv` using `pip install virtualenv`
+2. Install `pip install flake8`
+3. Install `pip install virtualenvwrapper-win`
+4. Create the virtual environment using `mkvirtualenv kaggle_env`
+5. Go to the folder where the `jads_kaggle` repository is located using `cd .../GitHub/jads_kaggle`
+6. In this folder set `kaggle_env` using the command `setprojectdir .`. Now, every time that you activate `kaggle_env` (using the command `workon kaggle_env`) the path `cd .../jads_kaggle` will be automatically set
+7. To activate the virtual environment in Anaconda, you have to use `Anaconda Prompt` and type `workon kaggle_env`. To activate the virtual environment in PyCharm type `workon kaggle_env` on the PyCharm terminal
+8. You can return to the `base environment` anytime using the command `deactivate`
+
+# Deleting a Conda Virtual Environment
+
+In order to delete a conda virtual enviromen you can:
+
+1. Search the conda enviroments that are setted in you machine using `conda info --envs`
+2. Go to the work directory where your virtual enviroment is set using `cd ../conda_eviroment`
+3. Remove the virtual enviroment using `remove --name conda_eviroment --all`
+
 ## Task 0 - Getting comfortable with pull requests ##
 
 In order to test your understanding of the proposed process you can try a rather minimal contribution:
@@ -71,8 +79,8 @@ The aforementioned process assumes a basic understanding of certain software too
     - [Udacity Course](https://eu.udacity.com/course/how-to-use-git-and-github--ud775) (in case you want a deeper understanding - strongly recommended)
 
 2. Virtual Environments
-    - [Managing environments in Anaconda](https://conda.io/docs/user-guide/getting-started.html#managing-envs)
-    - [Cheat sheet](https://conda.io/docs/user-guide/cheatsheet.html)
+    - [userguide](https://virtualenv.pypa.io/en/stable/userguide/)
+    - [Blog](http://timmyreilly.azurewebsites.net/python-pip-virtualenv-installation-on-windows/)
 
 3. Object Oriented Programming
     - [Classes](https://docs.python.org/3/tutorial/classes.html) in Python. Extensive tutorial containing valuable information.
