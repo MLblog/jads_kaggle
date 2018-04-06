@@ -15,4 +15,4 @@ Information for each of them can be found in its respective directory.
 7. Yuliyan Stoyanov
 8. Juan Manuel Ortiz
 9. Kristina Arsova
-
+10. Nitin Narayan
