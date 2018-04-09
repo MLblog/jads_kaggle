@@ -89,7 +89,7 @@ def _dl_image(key_url):
         pil_image_rgb = pil_image.convert('RGB')
         pil_image_rgb.save(path + ".jpg", format='JPEG', quality=90)
 
-    except (OSError, urllib3.exceptions.HTTPError):
+    except:  # noqa
         if DEBUG:
             print("Failed to Download image {}".format(path))
 
