@@ -8,8 +8,6 @@
 # Data files
 *.csv
 *.txt
-*.jpg
-*.json
 
 # IDE specific folders and files
 .idea/
