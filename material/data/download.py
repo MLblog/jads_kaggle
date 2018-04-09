@@ -118,6 +118,10 @@ def dl_images(data_file, out_dir, processes=20):
         # Create a folder for each unique label to better organize images.
         labels = set([entry[0].split("/")[0] for entry in key_url_list])
         _create_dirs(out_dir, labels)
+    elif "\\" in key_url_list[0][0]:
+        # The same for Windows paths.
+        labels = set([entry[0].split("\\")[0] for entry in key_url_list])
+        _create_dirs(out_dir, labels)
 
     # Complement the relatives image paths with their root.
     key_url_list = [(os.path.join(out_dir, path), url) for (path, url) in key_url_list]
