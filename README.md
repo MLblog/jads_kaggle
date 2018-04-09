@@ -16,3 +16,4 @@ Information for each of them can be found in its respective directory.
 8. Juan Manuel Ortiz
 9. Kristina Arsova
 10. Nitin Narayan
+11. Valentine Tuyishime
