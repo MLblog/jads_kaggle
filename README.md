@@ -12,3 +12,8 @@ Information for each of them can be found in its respective directory.
 4. Santiago Ruiz
 5. Joep van den Bogaert
 6. Christianne Wisse
+7. Yuliyan Stoyanov
+8. Juan Manuel Ortiz
+9. Kristina Arsova
+10. Nitin Narayan
+11. Valentine Tuyishime
