@@ -10,7 +10,7 @@ def clear_folder(path, unwanted_resolution=(1, 1, 3)):
     Parameters
     -------------------------
     path: String. Path to the folder that we would like to clear out.
-    unwanted_resolution: Tuple, default (1,1,3). The image resolution that we want to clear out of the folder.
+    unwanted_resolution: Tuple, default value is (1,1,3). The image resolution that we want to clear out of the folder.
     """
     print('I am working on the {} folder'.format(path))
     count = 0
