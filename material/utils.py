@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from PIL import Image
+from fnmatch import fnmatch
 
 
 def clear_folder(path, unwanted_resolution=(1, 1, 3)):
@@ -9,16 +10,19 @@ def clear_folder(path, unwanted_resolution=(1, 1, 3)):
 
     Parameters
     -------------------------
-    path: String. Path to the folder that we would like to clear out.
-    unwanted_resolution: Tuple, default value is (1,1,3). The image resolution that we want to clear out of the folder.
+    path: str
+        Path to the folder that we would like to clear out.
+    unwanted_resolution: tuple, optional
+        The image resolution that we want to clear out of the folder.
     """
     print('I am working on the {} folder'.format(path))
     count = 0
-    for dirpath, _, files in os.walk(path):
+    pattern = "*.jpg"
+    for dir_path, _, files in os.walk(path):
         for name in files:
-            temp_name = os.path.join(dirpath, name)
+            temp_name = os.path.join(dir_path, name)
             temp_shape = np.shape(np.array(Image.open(temp_name)))
-            if temp_shape == unwanted_resolution:
+            if temp_shape == unwanted_resolution and fnmatch(temp_name, pattern):
                 os.remove(temp_name)
                 count += 1
             else:
