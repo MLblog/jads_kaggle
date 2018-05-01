@@ -61,7 +61,10 @@ class LabelSelector(Sampler):
                 raise ValueError("Could not find directory {}".format(input))
 
             output = os.path.join(out_path, label)
-            shutil.copytree(input, output)
+            try:
+                shutil.copytree(input, output)
+            except FileExistsError:
+                print("file {} already exists, skipping".format(output))
 
 
 if __name__ == "__main__":
