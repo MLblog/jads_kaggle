@@ -25,7 +25,7 @@ def remove_low_resolution_images(path, min_resolution=20):
         for name in files:
             temp_name = os.path.join(dir_path, name)
             temp_shape = np.shape(np.array(Image.open(temp_name)))
-            if (temp_shape[0]<min_resolution or temp_shape[1]<min_resolution) and fnmatch(temp_name, pattern):
+            if (temp_shape[0] < min_resolution or temp_shape[1] < min_resolution) and fnmatch(temp_name, pattern):
                 os.remove(temp_name)
                 count += 1
             else:
