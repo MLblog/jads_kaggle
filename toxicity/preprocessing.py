@@ -1,9 +1,8 @@
-import re
-import string
 import pandas as pd
 import numpy as np
 import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
 from gensim import corpora, models
 
 from utils import timing, save_sparse_csr, load_sparse_csr
@@ -105,8 +104,7 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
     if use_own_tfidf:
         # Untested yet but I hope it works. I mean, why wouldn't it right?
         progress("Using our own version of TF-IDF, this will take a while...")
-        train_tfidf, test_tfidf = tf_idf(train, test, **tfidf_params)
-        whole_tfidf = train_tfidf + test_tfidf
+        train_tfidf, test_tfidf, whole_tfidf = tf_idf(train, test, **tfidf_params)
 
     else:
         # Use gensims TFIDF model - Tested while under the influence of 10 beers.
@@ -172,9 +170,83 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
 
 @check_compatibility
 @timing
-def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
+def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
+                            use_own_tfidf=True, data_dir='data/', save=False, **tfidf_params):
+
+    """ Use Latent Semantic Analysis (LSA/LSI) to obtain a dense matrix representation of the input text.
+
+    Parameters
+    ----------
+    :param train: The training set as a pd.Dataframe including the free text column "comment_text".
+    :param test: The test set as a pd.Dataframe including the free text column "comment_text".
+    :param num_topics: Number of columns (features) in the output matrices.
+    :report_progress: If True, progress will be reported when each computationally expensive step is starting.
+    :use_own_tfidf: If True, uses our own implementation of tfidf.
+    :data_dir: Path to the base data directory. Used to call this method from anywhere.
+               For example a notebook would provide `data_dir='../data'`
+
+    Returns
+    -------
+    :return: (train, test) datasets as 2D np.ndarrays of shape (num_comments, `num_topics`)
     """
-    Performs Pre_procesing of the data set and tokenization
+
+    def progress(msg):
+        """Helper to conditionally print progress messages to std:out."""
+        if report_progress:
+            print(msg)
+
+    # create lists of comments/strings
+    train_text = train["comment_text"].tolist()
+    test_text = test["comment_text"].tolist()
+    all_text = train_text + test_text
+
+    # create the TF-IDF representation needed for dimensionality reduction.
+    if use_own_tfidf:
+        # Untested yet but I hope it works. I mean, why wouldn't it right?
+        progress("Using our own version of TF-IDF, this will take a while...")
+        train_tfidf, test_tfidf, whole_tfidf = tf_idf(train, test, **tfidf_params)
+
+    else:
+        # use sklearn's TF-IDF in combination with NLTK's tokenizer
+        progress("Creating TF-IDF model and representations..")
+        tfidf_model = TfidfVectorizer(input='content',
+                                      encoding='utf-8',
+                                      decode_error='strict',
+                                      lowercase=True,
+                                      tokenizer=nltk.word_tokenize,
+                                      analyzer='word',
+                                      stop_words=None)
+
+        tfidf_model.fit(all_text)
+        train_tfidf = tfidf_model.transform(train_text)
+        test_tfidf = tfidf_model.transform(test_text)
+        whole_tfidf = tfidf_model.transform(all_text)
+
+    # Feed the TF-IDF representation to the dimensionality reduction model.
+    progress("Fitting SVD to all data..")
+    svd = TruncatedSVD(n_components=num_topics, n_iter=7)
+    svd.fit(whole_tfidf)
+
+    progress("Transforming train and test sets..")
+    x_train = svd.transform(train_tfidf)
+    x_test = svd.transform(test_tfidf)
+
+    # save and return data
+    x_train = pd.DataFrame(x_train)
+    x_test = pd.DataFrame(x_test)
+
+    if save:
+        x_train.to_csv(data_dir+"train_"+str(int(num_topics))+".csv")
+        x_test.to_csv(data_dir+"test_"+str(int(num_topics))+".csv")
+
+    progress("Dimensionality reduction completed.")
+    return x_train, x_test
+
+
+@timing
+def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, stemming=True, lemmatization=False):
+    """
+    Performs preprocessing of the data set and tokenization
     Each input is numpy array:
     train: Text to train the model
     test: test to test the model
@@ -191,9 +263,56 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
     if remove_numbers_function:
         train, test = remove_numbers(train, test)
 
-    re_tok = re.compile(f'([{string.punctuation}“”¨«»®´·º½¾¿¡§£₤‘’])')
-
-    def tokenizer(s): return re_tok.sub(r' \1 ', s).split()
+    if lemmatization + stemming == 2:
+        raise ValueError("It is not possible to apply both stemming and lemmatization. Please choose one of them.")
+    if stemming:
+        def tokenizer(s):
+            stemmer = nltk.stem.PorterStemmer()
+            tokens = nltk.word_tokenize(s)
+            stems = []
+            for item in tokens:
+                try:
+                    stems.append(stemmer.stem(item))
+                except RecursionError:
+                    stems.append('Big_word')
+            return stems
+    elif lemmatization:
+        def tokenizer(s):
+            lemmatizer = nltk.stem.WordNetLemmatizer()
+            lem = []
+            for item, tag in nltk.pos_tag(nltk.word_tokenize(s)):
+                if tag.startswith("NN"):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='n'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('VB'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='v'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('JJ'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='a'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                elif tag.startswith('R'):
+                    try:
+                        lem.append(lemmatizer.lemmatize(item, pos='r'))
+                    except RecursionError:
+                        lem.append('Big_word')
+                else:
+                    try:
+                        lem.append(lemmatizer.lemmatize(item))
+                    except RecursionError:
+                        lem.append('Big_word')
+            return lem
+    else:
+        def tokenizer(s):
+            try:
+                return nltk.word_tokenize(s)
+            except TypeError:
+                return ["UNKNOWN"]
 
     if not params:
         params = {
@@ -208,16 +327,19 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False):
         }
     vec = TfidfVectorizer(**params)
 
-    train = vec.fit_transform(train["comment_text"])
+    all_text = train["comment_text"].tolist() + test["comment_text"].tolist()
+    whole = vec.fit_transform(all_text)
+    train = vec.transform(train["comment_text"])
     test = vec.transform(test["comment_text"])
 
     if debug:
         print("Removing these tokens:\n{}".format(vec.stop_words_))
 
-    return train, test
+    return train, test, whole
 
 
-def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False, load=True, data_dir="data"):
+def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_function=True, debug=True, save=False,
+                      load=True, data_dir="data", stemming=True, lemmatization=False):
     """
     Get sparse matrix form of the train and test set
 
@@ -258,10 +380,9 @@ def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_functio
         else:
             raise ValueError("You asked to load the features but they were not found"
                              + "at the specified location: \n{}\n{}".format(name_train, name_test))
-
     else:
         print('Computing the sparse matrixes, this will take a while...!')
-        train, test = tf_idf(train, test, params, remove_numbers_function, debug)
+        train, test, _ = tf_idf(train, test, params, remove_numbers_function, debug, stemming, lemmatization)
 
     if save:
         print('Saving train file as {}'.format(name_train))

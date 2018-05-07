@@ -139,7 +139,7 @@ def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, ma
     if persist:
         write_results(write_to, scores, predictor_cls)
 
-    best_params, best_score = min(scores, key=lambda t: t[1])
+    best_params, best_score = max(scores, key=lambda t: t[1])
 
     return dict(best_params), best_score
 
@@ -214,6 +214,6 @@ def tune(predictor_cls, train_x, train_ys, param_grid, method='split', nfolds=3,
     if persist:
         write_results(write_to, scores, predictor_cls)
 
-    best_params, best_score = min(scores, key=lambda t: t[1])
+    best_params, best_score = max(scores, key=lambda t: t[1])
 
     return dict(best_params), best_score
