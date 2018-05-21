@@ -28,7 +28,7 @@ class Sampler(metaclass=ABCMeta):
         """
         if not os.path.exists(path):
             if debug:
-                print("Creating output directory at {}".format(path))
+                print("Creating out_label directory at {}".format(path))
             os.makedirs(path)
             return True
 
@@ -74,20 +74,21 @@ class LabelSelector(Sampler):
             crated.
 
         """
+
         self.conditional_create(out_path)
 
         for label in labels:
             label = str(label)
-            input = os.path.join(in_path, label)
+            in_label = os.path.join(in_path, label)
 
-            if not os.path.exists(input):
-                raise ValueError("Could not find directory {}".format(input))
+            if not os.path.exists(in_label):
+                raise ValueError("Could not find directory {}".format(in_label))
 
-            output = os.path.join(out_path, label)
+            out_label = os.path.join(out_path, label)
             try:
-                shutil.copytree(input, output)
+                shutil.copytree(in_label, out_label)
             except FileExistsError:
-                print("file {} already exists, skipping".format(output))
+                print("file {} already exists, skipping".format(out_label))
 
 
 class PercentageSelector(Sampler):
@@ -129,29 +130,29 @@ class PercentageSelector(Sampler):
         if not created:
             raise ValueError("output folder {} already exists".format(out_path))
 
-        # Our labels are named with integers, ranging from 1 to 128.
-        labels = range(1, 129)
+        # Our labels are the file names.
+        labels = [file for file in os.listdir(in_path) if os.path.isdir(os.path.join(in_path, file))]
 
         for label in labels:
             label = str(label)
 
-            input = os.path.join(in_path, label)
-            if not os.path.exists(input):
-                raise ValueError("Could not find directory {}".format(input))
+            in_label = os.path.join(in_path, label)
+            if not os.path.exists(in_label):
+                raise ValueError("Could not find directory {}".format(in_label))
 
-            output = os.path.join(out_path, label)
-            self.conditional_create(output)
+            out_label = os.path.join(out_path, label)
+            self.conditional_create(out_label)
 
             # Read the images
-            images = [i for i in os.listdir(input) if i.endswith('.jpg')]
+            images = [i for i in os.listdir(in_label) if i.endswith('.jpg')]
 
             # Number of images to be sampled for this particular label.
             num_images = int(percentage * len(images))
 
-            # Randomly select num_images from the image folder and copy them to the output
+            # Randomly select num_images from the image folder and copy them to the out_label
             rand_sample = [images[i] for i in sorted(random.sample(range(len(images)), num_images))]
             for image in rand_sample:
-                shutil.copyfile(os.path.join(input, image), os.path.join(output, image))
+                shutil.copyfile(os.path.join(in_label, image), os.path.join(out_label, image))
 
 
 if __name__ == "__main__":
