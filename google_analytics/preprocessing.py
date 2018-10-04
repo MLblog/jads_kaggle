@@ -1,6 +1,3 @@
-import pandas as pd
-
-
 def ohe_explicit(df):
     """Partly one hot encodes specific categorical features.
 
