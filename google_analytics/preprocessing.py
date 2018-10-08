@@ -1,269 +1,119 @@
+import json
 import os
-import numpy as np
+import time
+
 import pandas as pd
+import numpy as np
 
 
-def load_train_test_dataframes(data_dir):
-    """ Load the train and test DataFrames. """
-    train = pd.read_csv(os.path.join(data_dir, 'preprocessed_train.csv'),
-                        dtype={"fullVisitorId": str})
-    test = pd.read_csv(os.path.join(data_dir + 'preprocessed_test.csv'),
-                       dtype={"fullVisitorId": str})
+def load(path, nrows=None):
+    """ Load Google analytics data from JSON into a Pandas.DataFrame. """
+    JSON_COLUMNS = ['device', 'geoNetwork', 'totals', 'trafficSource']
+
+    df = pd.read_csv(path,
+                     converters={column: json.loads for column in JSON_COLUMNS},
+                     dtype={'fullVisitorId': 'str'},
+                     nrows=nrows)
+
+    # Normalize JSON columns
+    for column in JSON_COLUMNS:
+        column_as_df = pd.io.json.json_normalize(df[column])
+        df = df.drop(column, axis=1).merge(column_as_df, right_index=True, left_index=True)
+
+    # Parse date
+    df['date'] = df['date'].apply(lambda x: pd.datetime.strptime(str(x), '%Y%m%d'))
+    print("Loaded file {}\nShape is: {}".format(path, df.shape))
+    return df
+
+
+def process(train, test):
+    """ Perform basic preprocessing of Google analytics data. """
+
+    print("Dropping constant columns...")
+    # Remove columns with constant values.
+    const_cols = [c for c in train.columns if train[c].nunique(dropna=False) == 1]
+    train = train.drop(const_cols, axis=1)
+    test = test.drop(const_cols, axis=1)
+
+    # Cast target
+    train["transactionRevenue"] = train["transactionRevenue"].fillna(0).astype(float)
+    train["target"] = np.log(train["transactionRevenue"] + 1)
+    del train["transactionRevenue"]
+
+    train_len = train.shape[0]
+    merged = pd.concat([train, test], sort=False)
+
+    # Change values as “not available in demo dataset”, “(not set)”,
+    # “unknown.unknown”, “(not provided)” to nan\n",
+    list_missing = ["not available in demo dataset", "(not provided)",
+                    "(not set)", "<NA>", "unknown.unknown",  "(none)"]
+    merged = merged.replace(list_missing, np.nan)
+
+    # Create some features.
+    merged['diff_visitId_time'] = merged['visitId'] - merged['visitStartTime']
+    merged['diff_visitId_time'] = (merged['diff_visitId_time'] != 0).astype(int)
+    del merged['visitId']
+    del merged['sessionId']
+
+    print("Generating date columns...")
+    merged['WoY'] = merged['date'].apply(lambda x: x.isocalendar()[1])
+    merged['month'] = merged['date'].apply(lambda x: x.month)
+    merged['quarterMonth'] = merged['date'].apply(lambda x: x.day // 8)
+    merged['weekday'] = merged['date'].apply(lambda x: x.weekday())
+    del merged['date']
+
+    merged['visitHour'] = pd.to_datetime(merged['visitStartTime']
+                                         .apply(lambda t: time.strftime('%Y-%m-%d %H:%M:%S',
+                                                time.localtime(t)))) \
+        .apply(lambda t: t.hour)
+
+    del merged['visitStartTime']
+
+    print("Finding total visits...")
+    # This could be considered an information leak as I am including
+    # information about the future when predicting the revenue of a
+    # transaction. In reality, when looking at the 3rd visit we would
+    # have no way of knowning that the user will actually shop X more
+    # times (or if he will visit again at all). However since this
+    # info also exists in the test set we might use it.
+    total_visits = merged[["fullVisitorId", "visitNumber"]] \
+        .groupby("fullVisitorId", as_index=False).max()
+    total_visits.rename(columns={"visitNumber": "totalVisits"}, inplace=True)
+    merged = merged.merge(total_visits)
+
+    print("Splitting back...")
+    train = merged[:train_len]
+    test = merged[train_len:]
     return train, test
 
 
-def one_hot_encode_categoricals(data, categorical_columns):
-    """ Transform categorical data to one-hot encoding and
-        aggregate per customer.
+def preprocess_and_save(data_dir):
+    """ Preprocess and save the train and test data as DataFrames. """
+    train = load(os.path.join(data_dir, "train.csv"))
+    test = load(os.path.join(data_dir, "test.csv"))
 
-    params
-    ------
-    data: DataFrame to transform.
-    categorical_columns: array of column names indicating the
-        columns to transform to one-hot encoding.
+    target = train['transactionRevenue'].fillna(0).astype(float)
+    train['target'] = target.apply(lambda x: np.log1p(x))
+    del train['transactionRevenue']
 
-    notes
-    -----
-    The resulting columns are named as
-    <original column name>_<original value>.
-
-    Assumes the column fullVisitorId as grouper
-
-    return
-    ------
-    The one-hot encoded DataFrame.
-    """
-    for col in categorical_columns:
-        if data[col].dtypes in ["int64", "float64"]:
-            data[col] = data[col].astype("category")
-
-    encoded = pd.get_dummies(data[categorical_columns], prefix=categorical_columns)
-    encoded["fullVisitorId"] = data["fullVisitorId"]
-    return encoded.groupby("fullVisitorId").sum()
-
-
-def summarize_numerical_data(data, cols_to_describe, cols_to_sum):
-    """ Aggregate the numerical columns in the data per customer by
-        summarizing / describing their values.
-
-    params
-    ------
-    data: the DataFrame to aggregate.
-    cols_to_describe: array-like of column names for which to compute
-        descriptive measures such as mean, min, max, std, sum.
-    cols_to_sum: array-like of column names for which to only compute
-        the sum.
-
-    notes
-    -----
-    Aggregates by the column "fullVisitorId", so this column must
-    be present.
-
-    return
-    ------
-    The aggregated data with one row per customer and several columns for
-    every column in the original data: min, max, mean, std, and sum for the
-    columns in 'cols_to_describe' and the sum for the columns in 'cols_to_sum'
-    """
-    # describe columns
-    data_describe = data.groupby('fullVisitorId')[cols_to_describe] \
-                        .agg(['min', 'max', 'mean', 'std', 'sum'])
-    data_describe.columns = ['_'.join(col) for col in data_describe.columns]
-    data_describe[data_describe.columns[data_describe.columns.str.contains('std')]] = \
-        data_describe[data_describe.columns[data_describe.columns.str.contains('std')]].fillna(0)
-
-    # sum columns if specified
-    if cols_to_sum is not None:
-        data_sum = data.groupby(['fullVisitorId'])[cols_to_sum].sum().add_suffix("_sum")
-        return pd.concat([data_describe, data_sum], axis=1)
-    else:
-        return data_describe
-
-
-def get_means_of_booleans(data, boolean_cols):
-    """ Put boolean_cols of the data in a uniform format and
-        compute the mean per customer.
-
-    params
-    ------
-    data: The DataFrame.
-    boolean_cols: array-like of column names with boolean values to
-        process.
-
-    return
-    ------
-    DataFrame with a row for each customer and columns presenting
-    the percentage True for every column in boolean_cols.
-    """
-    # Some values are given in True/False, some in 1/NaN, etc.
-    # Here we unify this to 1 and 0.
-    data[boolean_cols] *= 1
-    data[boolean_cols] = data[boolean_cols].fillna(0)
-    # Calculate the %1 for each fullVisitorId
-    data_bool = data.groupby(['fullVisitorId'])[boolean_cols].mean()
-    data_bool = data_bool.add_suffix('_%true')
-    return data_bool
-
-
-def add_datetime_features(data, date_col="date"):
-    """ Calculate the time between first and last visit. """
-    data[date_col] = pd.to_datetime(data[date_col])
-    data_date = data.groupby(['fullVisitorId'])[date_col].agg(['min', 'max'])
-    data_date['days_first_to_last_visit'] = (data_date['max'] - data_date['min']).dt.days
-    del data_date['max']
-    del data_date['min']
-
-    return data_date
-
-
-def add_mean_time_between_visits(df):
-    """ Add the mean inter-visit time to the DataFrame."""
-    safe = df["visitNumber_nunique"] > 1
-    intervisit_time = np.zeros(len(df))
-    intervisit_time[safe] = df["days_first_to_last_visit"][safe] \
-        / (df["visitNumber_nunique"][safe]-1)
-    df["mean_intervisit_time"] = intervisit_time
-    return df
-
-
-def aggregate_data_per_customer(data, target_col_present):
-    """ Aggregate the data per customer by one-hot encoding categorical
-        variables and summarizing numerical variables.
-
-    params
-    ------
-    data: DataFrame
-        The data to aggregate.
-    target_col_present: boolean
-        Indicates whether the target column 'target' is in the data,
-        so put this to True for the train data and False for test.
-
-    return
-    ------
-    The aggregated DataFrame with one row per customer and
-    a shit load of columns.
-    """
-    def get_mode(x):
-        try:
-            return x.mode()[0]
-        except KeyError:
-            return np.nan
-        except IndexError:
-            return np.nan
-
-    # specify what to do with each column
-    complete_enum = ['channelGrouping', 'browser', 'operatingSystem',
-                     'continent', 'country', 'subContinent', 'adContent',
-                     'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page',
-                     'adwordsClickInfo.slot', 'campaign', 'medium', 'WoY', 'month',
-                     'quarter_month', 'weekday', 'visit_hour']
-    most_frequent = ['networkDomain', 'referralPath']
-    unique_value = ['city', 'metro', 'deviceCategory', 'region']
-    num_nunique = ['visitNumber']
-    num_describe = ['hits', 'pageviews']
-    booleans = ['isMobile', 'bounces', 'newVisits', 'adwordsClickInfo.isVideoAd',
-                'isTrueDirect']
-    if target_col_present:
-        num_sum = ['target']
-    else:
-        num_sum = None
-
-    # pre-process categorical data: one-hot encode
-    print("Summarizing the categorical variables...")
-    data_categoricals = one_hot_encode_categoricals(data, complete_enum+unique_value)
-    # for the columns in 'unique_values', there is only one value per customer
-    # and the rest is NaN, so we need just a 1 for the value and remove the NaN columns
-    data_categoricals = \
-        data_categoricals.loc[:, ~data_categoricals.columns.str.contains("NaN")]
-    for col in unique_value:
-        data_categoricals.loc[:, data_categoricals.columns.str.contains(col)] = \
-            np.minimum(1, data_categoricals.loc[:, data_categoricals.columns.str.contains(col)])
-
-    # categorical data with large numbers of unique values are
-    # dealt with by only taking the most frequent and the number of
-    # unique values NOTE: MODE LEADS TO STRING VALUES SO DOESNT WORK
-    # data_mode = data.groupby(["fullVisitorId"])[most_frequent] \
-    #                 .agg(lambda x: get_mode(x)).add_suffix("_mode")
-    data_diff = data.groupby(['fullVisitorId'])[most_frequent] \
-                    .nunique().add_suffix('_diff')
-
-    # pre-process numerical data
-    print("Summarizing the numerical variables...")
-    # first calculate number of visits in the dataset (unique visitNumber)
-    # and the total number of visits of the customer (max visitNumber)
-    data_nunique = data.groupby(['fullVisitorId'])[num_nunique].agg(['nunique', 'max'])
-    data_nunique.columns = ['_'.join(col) for col in data_nunique.columns]
-
-    # describe some columns in more detail by getting the
-    # the min, max, mean, and std;
-    # plus the sum of the target variable (which is what we want to predict)
-    data_numericals = summarize_numerical_data(data, num_describe, num_sum)
-
-    # handle booleans by taking the mean
-    data_bools = get_means_of_booleans(data, booleans)
-
-    # create datetime features: time between first and last visit
-    # and mean time between consecutive visits
-    data_dates = add_datetime_features(data)
-
-    # merge
-    print("Putting it all together..")
-    df = pd.concat([data_categoricals, data_diff, data_nunique,
-                    data_numericals, data_bools, data_dates], axis=1)
-
-    # add mean time between visits
-    df = add_mean_time_between_visits(df)
-    print("Done")
-
-    return df
-
-
-def ohe_explicit(df):
-    """Partly one hot encodes specific categorical features.
-
-    Instead of one hot encoding categorical columns with many distinct values (200+) we instead only create
-    boolean columns corresponding to specific values based on two criteria:
-        * Statistical Significance. These values should not be rare, else we are overfitting.
-        * Predictive Power. These values should have conditional averages considerably different from the global
-          target mean.
-
-    The choice of features and values has been made manually during EDA and is subject to change in case we come
-    up with better insights in the future.
-
-    Examples
-    --------
-    >>> train = load("../data/train.csv")
-    >>> check = ohe_explicit(train)
-    >>> check.head()
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        A dataframe including the raw categorical features for Country and City.
-
-    Returns
-    -------
-    pd.DataFrame
-        The original categorical columns are replaced by one hot columns for specific values only.
-
-    """
-    countries = ["United States"]
-    for country in countries:
-        df["country_" + country] = df["country"].apply(lambda c: c == country)
-
-    df.drop("country", axis=1, inplace=True)
-
-    cities = ["New York", "Chicago", "Austin", "Seattle", "Palo Alto", "Toronto"]
-    for city in cities:
-        df["city_" + city] = df["city"].apply(lambda c: c == city)
-
-    df.drop("city", axis=1, inplace=True)
-    return df
+    train, test = process(train, test)
+    train.to_csv(os.path.join(data_dir, "preprocessed_train.csv"), index=False)
+    test.to_csv(os.path.join(data_dir, "preprocessed_test.csv"), index=False)
 
 
 def keep_intersection_of_columns(train, test):
     """ Remove the columns from test and train set that are not in
         both datasets.
+
+    params
+    ------
+    train: pd.DataFrame containing the train set.
+    test: pd.DataFrame containing the test set.
+
+    return
+    ------
+    train and test where train.columns==test.columns by
+    keeping only columns that were present in both datasets.
     """
     shared_cols = list(set(train.columns).intersection(
         set(test.columns)))
