@@ -60,7 +60,6 @@ def process(train, test):
     merged['month'] = merged['date'].apply(lambda x: x.month)
     merged['quarterMonth'] = merged['date'].apply(lambda x: x.day // 8)
     merged['weekday'] = merged['date'].apply(lambda x: x.weekday())
-    del merged['date']
 
     merged['visitHour'] = pd.to_datetime(merged['visitStartTime']
                                          .apply(lambda t: time.strftime('%Y-%m-%d %H:%M:%S',
@@ -86,18 +85,14 @@ def process(train, test):
     return train, test
 
 
-def preprocess_and_save(data_dir):
+def preprocess_and_save(data_dir, nrows_train=None, nrows_test=None):
     """ Preprocess and save the train and test data as DataFrames. """
-    train = load(os.path.join(data_dir, "train.csv"))
-    test = load(os.path.join(data_dir, "test.csv"))
-
-    target = train['transactionRevenue'].fillna(0).astype(float)
-    train['target'] = target.apply(lambda x: np.log1p(x))
-    del train['transactionRevenue']
+    train = load(os.path.join(data_dir, "train.csv"), nrows=nrows_train)
+    test = load(os.path.join(data_dir, "test.csv"), nrows=nrows_test)
 
     train, test = process(train, test)
-    train.to_csv(os.path.join(data_dir, "preprocessed_train.csv"), index=False)
-    test.to_csv(os.path.join(data_dir, "preprocessed_test.csv"), index=False)
+    train.to_csv(os.path.join(data_dir, "preprocessed_train.csv"), index=False, encoding="utf-8")
+    test.to_csv(os.path.join(data_dir, "preprocessed_test.csv"), index=False, encoding="utf-8")
 
 
 def keep_intersection_of_columns(train, test):
