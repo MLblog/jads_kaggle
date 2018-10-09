@@ -43,8 +43,8 @@ def process(train, test):
     train_len = train.shape[0]
     merged = pd.concat([train, test], sort=False)
 
-    # Change values as “not available in demo dataset”, “(not set)”,
-    # “unknown.unknown”, “(not provided)” to nan\n",
+    # Change values as "not available in demo dataset", "(not set)",
+    # "unknown.unknown", "(not provided)" to nan.
     list_missing = ["not available in demo dataset", "(not provided)",
                     "(not set)", "<NA>", "unknown.unknown",  "(none)"]
     merged = merged.replace(list_missing, np.nan)
@@ -76,8 +76,7 @@ def process(train, test):
     # have no way of knowning that the user will actually shop X more
     # times (or if he will visit again at all). However since this
     # info also exists in the test set we might use it.
-    total_visits = merged[["fullVisitorId", "visitNumber"]] \
-        .groupby("fullVisitorId", as_index=False).max()
+    total_visits = merged[["fullVisitorId", "visitNumber"]].groupby("fullVisitorId", as_index=False).max()
     total_visits.rename(columns={"visitNumber": "totalVisits"}, inplace=True)
     merged = merged.merge(total_visits)
 
@@ -115,6 +114,5 @@ def keep_intersection_of_columns(train, test):
     train and test where train.columns==test.columns by
     keeping only columns that were present in both datasets.
     """
-    shared_cols = list(set(train.columns).intersection(
-        set(test.columns)))
+    shared_cols = list(set(train.columns).intersection(set(test.columns)))
     return train[shared_cols], test[shared_cols]
