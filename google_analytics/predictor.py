@@ -3,8 +3,7 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.base import BaseEstimator, ClassifierMixin
-
-from utils import timing
+from utils import timing # noqa
 
 TUNING_OUTPUT_DEFAULT = 'tuning.txt'
 RANDOM_STATE = 42  # Used for reproducible results
@@ -21,7 +20,7 @@ class Predictor(BaseEstimator, ClassifierMixin):
     def __init__(self, name=name):
         """
         Base constructor. The input training is expected to be preprocessed and contain
-        features extracted for each sample along with the true values for one of the 6 tags.
+        features extracted for each sample along with the true values
 
         :param params: a dictionary of named model parameters
         :param name: Optional model name, used for logging
@@ -36,9 +35,13 @@ class Predictor(BaseEstimator, ClassifierMixin):
         """
         A function that fits the predictor to the provided dataset
         """
+        self.model.fit(train_x, train_y)
 
     def score(self, x, y, sample_weight=None):
-        return mean_squared_error(y, self.predict(x))
+        """
+        A function to calculate the RMSE
+        """
+        return mean_squared_error(y, self.predict(x)) ** (1/2)
 
     @abstractmethod
     def predict(self, test_x):
@@ -47,6 +50,7 @@ class Predictor(BaseEstimator, ClassifierMixin):
         :param test_x: a pd.DataFrame of features to be used for predictions
         :return: The predicted labels
         """
+        return self.model.predict(test_x)
 
     @abstractmethod
     def predict_proba(self, test_x):
@@ -55,12 +59,13 @@ class Predictor(BaseEstimator, ClassifierMixin):
         :param test_x: a pd.DataFrame of features to be used for predictions
         :return: The predicted probabilities
         """
+        return self.model.predict_proba(test_x)
 
     @timing
     def evaluate(self, x, y, method="split", nfolds=3, val_size=0.3):
         """
         Evaluate performance of the predictor. The default method `CV` is a lot more robust, however it is also a lot slower
-        since it goes through `nfolds * len(TAGS)` iterations. The `split` method is based on a train-test split which makes it a lot faster.
+        since it goes through `nfolds` iterations. The `split` method is based on a train-test split which makes it a lot faster.
 
         :param x: Input features to be used for fitting
         :param y: Target values
