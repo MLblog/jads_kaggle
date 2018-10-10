@@ -8,26 +8,6 @@ from sklearn.ensemble import RandomForestRegressor
 from predictor import Predictor
 
 
-class BaseLine(Predictor):
-    name = 'Base Line Model'
-
-    def __init__(self, name=name, a=3, b=2):
-        super().__init__(name)
-        self.model = None
-
-    def fit(self, train_x, train_y, **params):
-        """
-        A function that fits the predictor to the provided dataset
-
-        :param train_x Contains the input features
-        :param train_y Contains the dependent tag values
-        """
-        pass
-
-    def predict(self, test_x):
-        return [0] * len(test_x)
-
-
 class RandomForestPredictor(Predictor):
     name = 'RandomForest Predictor'
 
@@ -45,23 +25,6 @@ class RandomForestPredictor(Predictor):
                                            min_impurity_split=min_impurity_split, bootstrap=bootstrap, oob_score=oob_score,
                                            n_jobs=n_jobs, random_state=random_state, verbose=verbose, warm_start=warm_start)
 
-    def fit(self, train_x, train_y, **params):
-        """
-        A function that fits the predictor to the provided dataset
-
-        :param train_x Contains the input features
-        :param train_y Contains the dependent tag values
-        """
-        self.model.fit(train_x, train_y, **params)
-
-    def predict(self, test_x):
-        """
-        A function that predict test_x from the model
-
-        :param test_x Contains the imput features
-        """
-        return self.model.predict(test_x)
-
 
 class RidgePredictor(Predictor):
     name = 'Ridge Predictor'
@@ -72,23 +35,6 @@ class RidgePredictor(Predictor):
         self.model = Ridge(alpha=alpha, fit_intercept=fit_intercept, normalize=normalize, copy_X=copy_X,
                            max_iter=max_iter, tol=tol, solver=solver, random_state=random_state)
 
-    def fit(self, train_x, train_y, **params):
-        """
-        A function that fits the predictor to the provided dataset
-
-        :param train_x Contains the input features
-        :param train_y Contains the dependent tag values
-        """
-        self.model.fit(train_x, train_y, **params)
-
-    def predict(self, test_x):
-        """
-        A function that predict test_x from the model
-
-        :param test_x Contains the imput features
-        """
-        return self.model.predict(test_x)
-
 
 class LassoPredictor(Predictor):
     name = 'Lasso Predictor'
@@ -97,20 +43,3 @@ class LassoPredictor(Predictor):
         super().__init__(name)
         self.model = Lasso(alpha=alpha, fit_intercept=fit_intercept, normalize=normalize,
                            copy_X=copy_X, max_iter=max_iter, tol=tol, random_state=random_state)
-
-    def fit(self, train_x, train_y, **params):
-        """
-        A function that fits the predictor to the provided dataset
-
-        :param train_x Contains the input features
-        :param train_y Contains the dependent tag values
-        """
-        self.model.fit(train_x, train_y, **params)
-
-    def predict(self, test_x):
-        """
-        A function that predict test_x from the model
-
-        :param test_x Contains the imput features
-        """
-        return self.model.predict(test_x)
