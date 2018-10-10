@@ -2,11 +2,9 @@ import multiprocessing
 from itertools import product
 from collections import Mapping
 from functools import partial
-
-import sys
-
 from GPyOpt.methods import BayesianOptimization
 
+import sys
 sys.path.append('..')
 from utils import timing # noqa
 
