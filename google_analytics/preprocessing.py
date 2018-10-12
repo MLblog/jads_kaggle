@@ -43,8 +43,8 @@ def process(train, test):
     train_len = train.shape[0]
     merged = pd.concat([train, test], sort=False)
 
-    # Change values as “not available in demo dataset”, “(not set)”,
-    # “unknown.unknown”, “(not provided)” to nan\n",
+    # Change values as "not available in demo dataset", "(not set)",
+    # "unknown.unknown", "(not provided)" to nan.
     list_missing = ["not available in demo dataset", "(not provided)",
                     "(not set)", "<NA>", "unknown.unknown",  "(none)"]
     merged = merged.replace(list_missing, np.nan)
@@ -60,8 +60,6 @@ def process(train, test):
     merged['month'] = merged['date'].apply(lambda x: x.month)
     merged['quarterMonth'] = merged['date'].apply(lambda x: x.day // 8)
     merged['weekday'] = merged['date'].apply(lambda x: x.weekday())
-    del merged['date']
-
     merged['visitHour'] = pd.to_datetime(merged['visitStartTime']
                                          .apply(lambda t: time.strftime('%Y-%m-%d %H:%M:%S',
                                                 time.localtime(t)))) \
@@ -76,8 +74,7 @@ def process(train, test):
     # have no way of knowning that the user will actually shop X more
     # times (or if he will visit again at all). However since this
     # info also exists in the test set we might use it.
-    total_visits = merged[["fullVisitorId", "visitNumber"]] \
-        .groupby("fullVisitorId", as_index=False).max()
+    total_visits = merged[["fullVisitorId", "visitNumber"]].groupby("fullVisitorId", as_index=False).max()
     total_visits.rename(columns={"visitNumber": "totalVisits"}, inplace=True)
     merged = merged.merge(total_visits)
 
@@ -87,18 +84,14 @@ def process(train, test):
     return train, test
 
 
-def preprocess_and_save(data_dir):
+def preprocess_and_save(data_dir, nrows_train=None, nrows_test=None):
     """ Preprocess and save the train and test data as DataFrames. """
-    train = load(os.path.join(data_dir, "train.csv"))
-    test = load(os.path.join(data_dir, "test.csv"))
-
-    target = train['transactionRevenue'].fillna(0).astype(float)
-    train['target'] = target.apply(lambda x: np.log1p(x))
-    del train['transactionRevenue']
+    train = load(os.path.join(data_dir, "train.csv"), nrows=nrows_train)
+    test = load(os.path.join(data_dir, "test.csv"), nrows=nrows_test)
 
     train, test = process(train, test)
-    train.to_csv(os.path.join(data_dir, "preprocessed_train.csv"), index=False)
-    test.to_csv(os.path.join(data_dir, "preprocessed_test.csv"), index=False)
+    train.to_csv(os.path.join(data_dir, "preprocessed_train.csv"), index=False, encoding="utf-8")
+    test.to_csv(os.path.join(data_dir, "preprocessed_test.csv"), index=False, encoding="utf-8")
 
 
 def keep_intersection_of_columns(train, test):
@@ -115,6 +108,5 @@ def keep_intersection_of_columns(train, test):
     train and test where train.columns==test.columns by
     keeping only columns that were present in both datasets.
     """
-    shared_cols = list(set(train.columns).intersection(
-        set(test.columns)))
+    shared_cols = list(set(train.columns).intersection(set(test.columns)))
     return train[shared_cols], test[shared_cols]

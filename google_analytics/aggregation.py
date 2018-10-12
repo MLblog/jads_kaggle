@@ -5,12 +5,15 @@ import pandas as pd
 
 
 def load_train_test_dataframes(data_dir, train_file_name='preprocessed_train.csv',
-                               test_file_name='preprocessed_test.csv'):
+                               test_file_name='preprocessed_test.csv', nrows_train=None, nrows_test=None):
     """ Load the train and test DataFrames resulting from preprocessing. """
     train = pd.read_csv(os.path.join(data_dir, train_file_name),
-                        dtype={"fullVisitorId": str})
+                        dtype={"fullVisitorId": str},
+                        nrows=nrows_train)
     test = pd.read_csv(os.path.join(data_dir + test_file_name),
-                       dtype={"fullVisitorId": str})
+                       dtype={"fullVisitorId": str},
+                       nrows=nrows_test)
+
     return train, test
 
 
@@ -187,7 +190,7 @@ def aggregate_data_per_customer(data):
                      'continent', 'country', 'subContinent', 'adContent',
                      'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page',
                      'adwordsClickInfo.slot', 'campaign', 'medium', 'WoY', 'month',
-                     'quarter_month', 'weekday', 'visit_hour']
+                     'quarterMonth', 'weekday', 'visitHour']
     most_frequent = ['networkDomain', 'referralPath']
     unique_value = ['city', 'metro', 'deviceCategory', 'region']
     num_nunique = ['visitNumber']
