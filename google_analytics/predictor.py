@@ -1,15 +1,15 @@
 from abc import abstractmethod
 import numpy as np
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, make_scorer
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator
 from utils import timing # noqa
 
 TUNING_OUTPUT_DEFAULT = 'tuning.txt'
 RANDOM_STATE = 42  # Used for reproducible results
 
 
-class Predictor(BaseEstimator, ClassifierMixin):
+class Predictor(BaseEstimator):
     """
     An abstract class modeling our notion of a predictor.
     Concrete implementations should follow the predictors
@@ -36,12 +36,6 @@ class Predictor(BaseEstimator, ClassifierMixin):
         A function that fits the predictor to the provided dataset
         """
         self.model.fit(train_x, train_y)
-
-    def score(self, x, y, sample_weight=None):
-        """
-        A function to calculate the RMSE
-        """
-        return mean_squared_error(y, self.predict(x)) ** (1/2)
 
     @abstractmethod
     def predict(self, test_x):
@@ -79,13 +73,14 @@ class Predictor(BaseEstimator, ClassifierMixin):
         #    return self._stratified_cv(x, ys, nfolds)
 
         if method == 'CV':
-            scores = cross_val_score(self, x, y, cv=nfolds)
-            return np.mean(scores)
+            scorer = make_scorer(mean_squared_error)
+            scores = cross_val_score(self.model, x, y, cv=nfolds, scoring=scorer)
+            return np.mean(scores ** (1/2))
 
         if method == 'split':
             train_x, val_x, train_y, val_y = train_test_split(x, y, test_size=val_size, random_state=RANDOM_STATE)
             self.fit(train_x, train_y)
             predictions = self.predict(val_x)
-            return mean_squared_error(val_y, predictions)
+            return mean_squared_error(val_y, predictions) ** (1/2)
 
         raise ValueError("Method must be either 'stratified_CV', 'CV' or 'split', not {}".format(method))
