@@ -143,7 +143,7 @@ def bayesian_optimization(predictor_cls, train_x, train_y, params, max_iter, max
 
 
 @timing
-def tune(predictor_cls, train_x, train_y, param_grid, method='split', nfolds=3, silent=True, persist=True,
+def tune(predictor_cls, train_x, train_y, param_grid, method='CV', nfolds=3, silent=True, persist=True,
          write_to=TUNING_OUTPUT_DEFAULT):
     """
     Exhaustively searches over the grid of parameters for the best combination by minimizing the log loss.
@@ -213,7 +213,7 @@ def tune(predictor_cls, train_x, train_y, param_grid, method='split', nfolds=3, 
     # save this block of code for testing the multiprocessing pool
     # scores = []
     # for permutation in permutations:
-    #     scores.append(eval_permutation(permutation, predictor_cls, train_x, train_y, method='split', nfolds=3, silent=False))
+    #    scores.append(eval_permutation(permutation, predictor_cls, train_x, train_y, method=method, nfolds=3, silent=False))
 
     if persist:
         write_results(write_to, scores, predictor_cls)
