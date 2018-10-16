@@ -185,17 +185,17 @@ def aggregate_data_per_customer(data):
             return np.nan
 
     # specify what to do with each column
-    complete_enum = ['channelGrouping', 'browser', 'operatingSystem',
+    OHE = ['channelGrouping', 'browser', 'operatingSystem',
                      'continent', 'country', 'subContinent', 'adContent',
                      'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page',
                      'adwordsClickInfo.slot', 'campaign', 'medium', 'WoY', 'month',
-                     'quarterMonth', 'weekday', 'visitHour']
-    most_frequent = ['networkDomain', 'referralPath']
+                     'quarterMonth', 'weekday', 'visitHour', 'source_cat']
+    cat_nunique = ['networkDomain', 'referralPath', 'keyword', 'source']
     unique_value = ['city', 'metro', 'deviceCategory', 'region']
     num_nunique = ['visitNumber']
-    num_describe = ['hits', 'pageviews']
+    num_describe = ['hits', 'pageviews', 'keyword.mistakes_Google', 'keyword.mistakes_YouTube']
     booleans = ['isMobile', 'bounces', 'newVisits', 'adwordsClickInfo.isVideoAd',
-                'isTrueDirect']
+                'isTrueDirect', 'keyword.isGoogle', 'keyword.isYouTube']
 
     if 'target' in data.columns:
         num_sum = ['target']
@@ -204,7 +204,7 @@ def aggregate_data_per_customer(data):
 
     # pre-process categorical data: one-hot encode
     print("Summarizing the categorical variables...")
-    data_categoricals = one_hot_encode_categoricals(data, complete_enum+unique_value)
+    data_categoricals = one_hot_encode_categoricals(data, OHE+unique_value)
     # for the columns in 'unique_values', there is only one value per customer
     # and the rest is NaN, so we need just a 1 for the value and remove the NaN columns
     data_categoricals = \
@@ -215,7 +215,7 @@ def aggregate_data_per_customer(data):
 
     # categorical data with large numbers of unique values are dealt
     # with by only taking the number of unique values per customer
-    data_diff = data.groupby(['fullVisitorId'])[most_frequent] \
+    data_diff = data.groupby(['fullVisitorId'])[cat_nunique] \
                     .nunique().add_suffix('_diff')
 
     # pre-process numerical data
