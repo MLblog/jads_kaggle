@@ -186,10 +186,10 @@ def aggregate_data_per_customer(data):
 
     # specify what to do with each column
     OHE = ['channelGrouping', 'browser', 'operatingSystem',
-                     'continent', 'country', 'subContinent', 'adContent',
-                     'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page',
-                     'adwordsClickInfo.slot', 'campaign', 'medium', 'WoY', 'month',
-                     'quarterMonth', 'weekday', 'visitHour', 'source_cat']
+           'continent', 'country', 'subContinent', 'adContent',
+           'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page',
+           'adwordsClickInfo.slot', 'campaign', 'medium', 'WoY', 'month',
+           'quarterMonth', 'weekday', 'visitHour', 'source_cat']
     cat_nunique = ['networkDomain', 'referralPath', 'keyword', 'source']
     unique_value = ['city', 'metro', 'deviceCategory', 'region']
     num_nunique = ['visitNumber']
