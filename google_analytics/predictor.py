@@ -30,23 +30,22 @@ class Predictor(BaseEstimator):
     def __str__(self):
         return self.name
 
-    @abstractmethod
     def fit(self, train_x, train_y):
         """
         A function that fits the predictor to the provided dataset
+        :param train_x: train data, a pd.DataFrame of features to fit on.
+        :param train_y: The labels for the training data.
         """
         self.model.fit(train_x, train_y)
 
-    @abstractmethod
     def predict(self, test_x):
         """
-        Predicts the label for the given input
+        Predicts the target for the given input
         :param test_x: a pd.DataFrame of features to be used for predictions
         :return: The predicted labels
         """
         return self.model.predict(test_x)
 
-    @abstractmethod
     def predict_proba(self, test_x):
         """
         Predicts the probability of the label for the given input
@@ -63,7 +62,7 @@ class Predictor(BaseEstimator):
 
         :param x: Input features to be used for fitting
         :param y: Target values
-        :param method: String denoting the evaluation method. Acceptable values are cv for cross validation and split for train-test split
+        :param method: String denoting the evaluation method. Acceptable values are 'cv' for cross validation and 'split' for train-test split
         :param nfolds: Number of folds per tag in case CV is the evaluation method. Ignored otherwise
         :param val_size: Ratio of the training set to be used as validation in case split is the evaluation method. Ignored otherwise
         :return: The average log loss error across all tags
