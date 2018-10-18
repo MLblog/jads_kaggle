@@ -46,6 +46,9 @@ def process(train, test):
     train_len = train.shape[0]
     merged = pd.concat([train, test], sort=False)
 
+    # Ensure correct train-test split
+    merged["manual_index"] = np.arange(0, len(merged))
+
     # Change values as "not available in demo dataset", "(not set)",
     # "unknown.unknown", "(not provided)" to nan.
     list_missing = ["not available in demo dataset", "(not provided)",
@@ -92,6 +95,7 @@ def process(train, test):
     merged = merged.merge(total_visits)
 
     print("Splitting back...")
+    merged.sort_values(by="manual_index", ascending=True, inplace=True)
     train = merged[:train_len]
     test = merged[train_len:]
     return train, test
