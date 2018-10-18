@@ -137,7 +137,7 @@ def bayesian_optimization(predictor_cls, train_x, train_y, params, max_iter, max
     if persist:
         write_results(write_to, scores, predictor_cls)
 
-    best_params, best_score = max(scores, key=lambda t: t[1])
+    best_params, best_score = min(scores, key=lambda t: t[1])
 
     return dict(best_params), best_score
 
@@ -195,29 +195,29 @@ def tune(predictor_cls, train_x, train_y, param_grid, method='CV', nfolds=3, sil
     permutations = get_permutations(param_grid)
     print("Applying GridSearch for {} permutations of parameters".format(len(permutations)))
 
-    processes = min(max(1, multiprocessing.cpu_count() - 1), len(permutations))
-    if not silent:
-        print("Running tune in parallel using {} child processes".format(processes))
+    # processes = min(max(1, multiprocessing.cpu_count() - 1), len(permutations))
+    # if not silent:
+    #     print("Running tune in parallel using {} child processes".format(processes))
 
-    pool = multiprocessing.Pool(processes=processes)
-    evaluator = partial(eval_permutation,
-                        predictor_cls=predictor_cls,
-                        train_x=train_x,
-                        train_y=train_y,
-                        method=method,
-                        nfolds=nfolds,
-                        silent=silent)
+    # pool = multiprocessing.Pool(processes=processes)
+    # evaluator = partial(eval_permutation,
+    #                     predictor_cls=predictor_cls,
+    #                     train_x=train_x,
+    #                     train_y=train_y,
+    #                     method=method,
+    #                     nfolds=nfolds,
+    #                     silent=silent)
 
-    scores = pool.map(evaluator, permutations)
+    # scores = pool.map(evaluator, permutations)
 
     # save this block of code for testing the multiprocessing pool
-    # scores = []
-    # for permutation in permutations:
-    #    scores.append(eval_permutation(permutation, predictor_cls, train_x, train_y, method=method, nfolds=3, silent=False))
+    scores = []
+    for permutation in permutations:
+       scores.append(eval_permutation(permutation, predictor_cls, train_x, train_y, method=method, nfolds=3, silent=False))
 
     if persist:
         write_results(write_to, scores, predictor_cls)
 
-    best_params, best_score = max(scores, key=lambda t: t[1])
+    best_params, best_score = min(scores, key=lambda t: t[1])
 
     return dict(best_params), best_score
