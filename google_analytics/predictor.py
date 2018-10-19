@@ -66,10 +66,6 @@ class Predictor(BaseEstimator):
         :param val_size: Ratio of the training set to be used as validation in case split is the evaluation method. Ignored otherwise
         :return: The average log loss error across all tags
         """
-        # print("Using {} evaluation method across all tags...".format(method))
-        # if method == 'stratified_CV':
-        #    return self._stratified_cv(x, ys, nfolds)
-
         if method == 'CV':
             scorer = make_scorer(mean_squared_error)
             scores = cross_val_score(self.model, x, y, cv=nfolds, scoring=scorer)
