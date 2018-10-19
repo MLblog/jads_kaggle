@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def create_submission(predictor_cls, params, train_x, train_y, test_x, test_ids,
                       save=True, path="../submissions/submission.csv"):
     """ Create a submission file.
@@ -26,7 +27,7 @@ def create_submission(predictor_cls, params, train_x, train_y, test_x, test_ids,
 
     Returns
     -------
-    A pd.DataFrame with two columns ['fullVisitorId', 'PredictedLogRevenue']. This file 
+    A pd.DataFrame with two columns ['fullVisitorId', 'PredictedLogRevenue']. This file
     can be saved as csv (data.to_csv(path, index=False)) and then uploaded to Kaggle.
     """
 
@@ -41,7 +42,7 @@ def create_submission(predictor_cls, params, train_x, train_y, test_x, test_ids,
     print("Creating submission...")
     submission = pd.concat([test_ids, pd.Series(test_y, name="PredictedLogRevenue")], axis=1)
 
-    if save == True:
+    if save:
         print("Saving submission file...")
         try:
             submission.to_csv(path, index=False)

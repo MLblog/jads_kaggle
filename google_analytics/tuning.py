@@ -1,7 +1,7 @@
 import multiprocessing
 from itertools import product
 from collections import Mapping
-from functools import partial
+# from functools import partial # uncomment if using multiprocessing
 from GPyOpt.methods import BayesianOptimization
 
 import sys
@@ -213,7 +213,7 @@ def tune(predictor_cls, train_x, train_y, param_grid, method='CV', nfolds=3, sil
     # save this block of code for testing the multiprocessing pool
     scores = []
     for permutation in permutations:
-       scores.append(eval_permutation(permutation, predictor_cls, train_x, train_y, method=method, nfolds=3, silent=False))
+        scores.append(eval_permutation(permutation, predictor_cls, train_x, train_y, method=method, nfolds=3, silent=False))
 
     if persist:
         write_results(write_to, scores, predictor_cls)
