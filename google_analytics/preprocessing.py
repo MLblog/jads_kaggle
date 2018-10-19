@@ -130,11 +130,13 @@ def keep_intersection_of_columns(train, test):
 
 def replace(string, regex, replacement):
     """ replace an original string when a regular expression is in this string
+
     params
     ------
     string: The original string
     regex: Regular expression
     replacement: The replacing string
+
     return
     ------
     When the regular expression is in the original string, the replacement is returned.
@@ -152,11 +154,13 @@ def replace(string, regex, replacement):
 
 def isSimilar(string, aimed_string, threshold):
     """ Indicates whether string is similar to aimed_string including the levenshtein distance
+
     params
     ------
     string: The original string
     aimed_string: The aimed string
     threshold: The maximum levenshtein distance
+
     return
     ------
     label: boolean
@@ -186,6 +190,7 @@ def isSimilar(string, aimed_string, threshold):
 
 def give_cat(string):
     """ assigns the column 'source' to categories
+
     params
     ------
     string: The original source
