@@ -5,6 +5,9 @@ import time
 import pandas as pd
 import numpy as np
 
+import Levenshtein
+import re
+
 
 def load(path, nrows=None):
     """ Load Google analytics data from JSON into a Pandas.DataFrame. """
@@ -43,6 +46,9 @@ def process(train, test):
     train_len = train.shape[0]
     merged = pd.concat([train, test], sort=False)
 
+    # Ensure correct train-test split
+    merged["manual_index"] = np.arange(0, len(merged))
+
     # Change values as "not available in demo dataset", "(not set)",
     # "unknown.unknown", "(not provided)" to nan.
     list_missing = ["not available in demo dataset", "(not provided)",
@@ -50,10 +56,20 @@ def process(train, test):
     merged = merged.replace(list_missing, np.nan)
 
     # Create some features.
+    print("Create some features...")
     merged['diff_visitId_time'] = merged['visitId'] - merged['visitStartTime']
     merged['diff_visitId_time'] = (merged['diff_visitId_time'] != 0).astype(int)
     del merged['visitId']
     del merged['sessionId']
+    # Check whether there is refered to google or youtube in the search term and report the number of spelling mistakes made while searching
+    merged['keyword.isGoogle'] = merged['keyword'].apply(lambda x: isSimilar(x, 'google', 2)[0])
+    merged['keyword.mistakes_Google'] = merged['keyword'].apply(lambda x: isSimilar(x, 'google', 2)[1])
+    merged['keyword.isYouTube'] = merged['keyword'].apply(lambda x: isSimilar(x, 'youtube', 3)[0])
+    merged['keyword.mistakes_YouTube'] = merged['keyword'].apply(lambda x: isSimilar(x, 'youtube', 3)[1])
+    # generalize referralPath
+    merged['referralPath'] = merged['referralPath'].apply(lambda x: replace(x, '/yt/about/', '/yt/about/'))
+    # generalize sources
+    merged['source_cat'] = merged['source'].apply(lambda x: give_cat(x))
 
     print("Generating date columns...")
     merged['WoY'] = merged['date'].apply(lambda x: x.isocalendar()[1])
@@ -80,6 +96,7 @@ def process(train, test):
     merged = merged.merge(total_visits)
 
     print("Splitting back...")
+    merged.sort_values(by="manual_index", ascending=True, inplace=True)
     train = merged[:train_len]
     test = merged[train_len:]
     return train, test
@@ -111,3 +128,95 @@ def keep_intersection_of_columns(train, test):
     """
     shared_cols = list(set(train.columns).intersection(set(test.columns)))
     return train[shared_cols], test[shared_cols]
+
+
+def replace(string, regex, replacement):
+    """ replace an original string when a regular expression is in this string
+
+    params
+    ------
+    string: The original string
+    regex: Regular expression
+    replacement: The replacing string
+
+    return
+    ------
+    When the regular expression is in the original string, the replacement is returned.
+    Else the original string is returns
+    """
+    regex = re.compile(regex)
+    if pd.isnull(string):
+        return string
+    else:
+        if regex.search(string):
+            return replacement
+        else:
+            return string
+
+
+def isSimilar(string, aimed_string, threshold):
+    """ Indicates whether string is similar to aimed_string including the levenshtein distance
+
+    params
+    ------
+    string: The original string
+    aimed_string: The aimed string
+    threshold: The maximum levenshtein distance
+
+    return
+    ------
+    label: boolean
+        Is True when the levenshtein distance between string and aimed_string
+        is smaller or equal to the threshold. Else it returns False.
+    score: int
+        The levenshtein distance between string and aimed_string
+    """
+    if pd.isnull(string):
+        return np.nan, np.nan
+    else:
+        score = Levenshtein.distance(string.lower(), aimed_string)
+        return_score = np.nan
+        label = False
+        if score > threshold:
+            for word in string.split():
+                score = Levenshtein.distance(word.lower(), aimed_string)
+                if score <= threshold:
+                    label = True
+                    return_score = score
+                    break
+        else:
+            label = True
+            return_score = score
+        return label, return_score
+
+
+def give_cat(string):
+    """ assigns the column 'source' to categories
+
+    params
+    ------
+    string: The original source
+    return
+    ------
+    The category to which the source belongs
+    """
+    regex_google = re.compile('google')
+    regex_youtube = re.compile('youtube')
+    regex_direct = re.compile('(direct)')
+    regex_partners = re.compile('Partners')
+    regex_search = re.compile('baidu|yahoo|bing|ask|duckduckgo|sogou|yandex|search')
+    if pd.isnull(string):
+        return string
+    else:
+        if regex_google.search(string):
+            return 'google'
+        elif regex_youtube.search(string):
+            return 'youtube'
+        elif regex_direct.search(string):
+            return 'direct'
+        elif regex_partners.search(string):
+            return 'partners'
+        elif regex_search.search(string):
+            return 'other_search_engine'
+        else:
+            return np.nan
