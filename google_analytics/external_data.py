@@ -49,16 +49,19 @@ def get_gdp(path):
     return gdp[["Country Name", "GDP"]].dropna(subset=['GDP']).rename(columns={"Country Name": "country"})
 
 
-def add_gdp(df, gdp):
+def add_gdp(df, gdp, input_type="raw", drop=True):
     """Adds the `GDP` to the dataset. Assuming that both passed dataframes have a column named `country`.
 
     Parameters
     ----------
     df : pd.DataFrame
         Training of test dataframe including the `country` column.
-
     gdp : pd.DataFrame
         Mapping between `country` and `GDP`
+    input_type : {"raw", "aggregated"}
+        Whether the operation should run on the raw, or the aggregated dataset.
+    drop : bool
+        Whether the old country columns should be droped.
 
     Returns
     -------
@@ -75,5 +78,27 @@ def add_gdp(df, gdp):
         except UnicodeEncodeError:
             return "Unknown"
 
+    if input_type == "aggregated":
+        country_cols = [col for col in df.columns if col.startswith("country") and col != "country"]
+
+        def inverse_ohe(row):
+            for c in country_cols:
+                if row[c] == 1:
+                    return c.split("_")[1]
+
+        df["country"] = df.apply(inverse_ohe, axis=1)
+        if drop:
+            df = df.drop(country_cols, axis=1)
+
+    elif input_type != "raw":
+        msg = "Only {} and {} are supported. \n" + \
+              "\tThe former assumes the original form where only the JSON has been flattened.\n" + \
+              "\tThe latter assumes that OHE has already occured on top."
+        raise ValueError(msg)
+
     df["country"] = df["country"].fillna("Unknown").apply(stringify)
-    return df.merge(gdp, on="country", how='left')
+    result = df.merge(gdp, on="country", how='left')
+    if drop:
+        result.drop("country", axis=1, inplace=True)
+
+    return result
