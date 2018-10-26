@@ -1,7 +1,7 @@
 import multiprocessing
 from itertools import product
 from collections import Mapping
-# from functools import partial # uncomment if using multiprocessing
+from functools import partial
 from GPyOpt.methods import BayesianOptimization
 
 import sys
@@ -194,26 +194,28 @@ def tune(predictor_cls, train_x, train_y, param_grid, method='CV', nfolds=3, sil
 
     permutations = get_permutations(param_grid)
     print("Applying GridSearch for {} permutations of parameters".format(len(permutations)))
+    temp_model = predictor_cls()
+    if 'n_jobs' in list(temp_model.get_params().keys()):
+        if not silent:
+            print("Running tune not using parallel computing")
+        scores = []
+        for permutation in permutations:
+            scores.append(eval_permutation(permutation, predictor_cls, train_x, train_y, method=method, nfolds=3, silent=False))
+    else:
+        processes = min(max(1, multiprocessing.cpu_count() - 1), len(permutations))
+        if not silent:
+            print("Running tune in parallel using {} child processes".format(processes))
 
-    # processes = min(max(1, multiprocessing.cpu_count() - 1), len(permutations))
-    # if not silent:
-    #     print("Running tune in parallel using {} child processes".format(processes))
+        pool = multiprocessing.Pool(processes=processes)
+        evaluator = partial(eval_permutation,
+                            predictor_cls=predictor_cls,
+                            train_x=train_x,
+                            train_y=train_y,
+                            method=method,
+                            nfolds=nfolds,
+                            silent=silent)
 
-    # pool = multiprocessing.Pool(processes=processes)
-    # evaluator = partial(eval_permutation,
-    #                     predictor_cls=predictor_cls,
-    #                     train_x=train_x,
-    #                     train_y=train_y,
-    #                     method=method,
-    #                     nfolds=nfolds,
-    #                     silent=silent)
-
-    # scores = pool.map(evaluator, permutations)
-
-    # save this block of code for testing the multiprocessing pool
-    scores = []
-    for permutation in permutations:
-        scores.append(eval_permutation(permutation, predictor_cls, train_x, train_y, method=method, nfolds=3, silent=False))
+        scores = pool.map(evaluator, permutations)
 
     if persist:
         write_results(write_to, scores, predictor_cls)
