@@ -9,9 +9,9 @@ import Levenshtein
 import re
 
 
-def load(path, nrows=None):
+def load(path, nrows=None, format_solver=False):
     """ Load Google analytics data from JSON into a Pandas.DataFrame. """
-    JSON_COLUMNS = ['device', 'geoNetwork', 'totals', 'trafficSource']
+    JSON_COLUMNS = ['device', 'geoNetwork', 'totals', 'trafficSource'] # noqa   
 
     df = pd.read_csv(path,
                      converters={column: json.loads for column in JSON_COLUMNS},
@@ -20,7 +20,10 @@ def load(path, nrows=None):
 
     # Normalize JSON columns
     for column in JSON_COLUMNS:
-        column_as_df = pd.io.json.json_normalize(df[column])
+        if format_solver:
+            column_as_df = df[column].apply(lambda x: pd.io.json.json_normalize(x).iloc[0])
+        else:
+            column_as_df = pd.io.json.json_normalize(df[column])
         df = df.drop(column, axis=1).merge(column_as_df, right_index=True, left_index=True)
 
     # Parse date
@@ -44,7 +47,7 @@ def process(train, test):
     del train["transactionRevenue"]
 
     train_len = train.shape[0]
-    merged = pd.concat([train, test], sort=False)
+    merged = pd.concat([train, test])
 
     # Ensure correct train-test split
     merged["manual_index"] = np.arange(0, len(merged))
@@ -154,7 +157,7 @@ def replace(string, regex, replacement):
             return string
 
 
-def isSimilar(string, aimed_string, threshold):
+def isSimilar(string, aimed_string, threshold): # noqa
     """ Indicates whether string is similar to aimed_string including the levenshtein distance
 
     params
