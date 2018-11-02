@@ -6,17 +6,20 @@ import pandas as pd
 
 def load_train_test_dataframes(data_dir, x_train_file_name='preprocessed_x_train.csv',
                                y_train_file_name='preprocessed_y_train.csv',
-                               x_test_file_name='preprocessed_x_test.csv', nrows_train=None, 
+                               x_test_file_name='preprocessed_x_test.csv', nrows_train=None,
                                nrows_test=None):
     """ Load the train and test DataFrames resulting from preprocessing. """
     x_train = pd.read_csv(os.path.join(data_dir, x_train_file_name),
-                        dtype={"fullVisitorId": str},
-                        nrows=nrows_train)
+                          dtype={"fullVisitorId": str},
+                          nrows=nrows_train)
+
     y_train = pd.read_csv(os.path.join(data_dir, y_train_file_name),
-                        dtype={"fullVisitorId": str})
+                          dtype={"fullVisitorId": str})
+
     x_test = pd.read_csv(os.path.join(data_dir + x_test_file_name),
-                       dtype={"fullVisitorId": str},
-                       nrows=nrows_test)
+                         dtype={"fullVisitorId": str},
+                         nrows=nrows_test)
+
     x_train['date'] = x_train['date'].apply(lambda x: pd.datetime.strptime(str(x), '%Y-%m-%d'))
     x_test['date'] = x_test['date'].apply(lambda x: pd.datetime.strptime(str(x), '%Y-%m-%d'))
     return x_train, y_train, x_test
@@ -221,13 +224,13 @@ def aggregate_data_per_customer(data, startdate_y, startdate_x):
     """
 
     # Specify what to do with each column
-    # Static 
+    # Static
     OHE = ['channelGrouping', 'browser', 'deviceCategory', 'operatingSystem', 'city', 'continent',
-           'country', 'metro', 'region', 'subContinent', 'adContent', 
-           'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page', 'adwordsClickInfo.slot', 
+           'country', 'metro', 'region', 'subContinent', 'adContent',
+           'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page', 'adwordsClickInfo.slot',
            'campaign', 'medium', 'source_cat', 'weekday', 'visitHour']
     booleans = ['isMobile', 'adwordsClickInfo.isVideoAd', 'isTrueDirect', 'keyword.isGoogle', 'keyword.isYouTube']
-    cat_nunique = ['networkDomain'] 
+    cat_nunique = ['networkDomain']
     num_mean = ['totalVisits', 'keyword.mistakes_Google', 'keyword.mistakes_YouTube']
 
     # Dynamic
@@ -235,7 +238,7 @@ def aggregate_data_per_customer(data, startdate_y, startdate_x):
     monthly_mean = ['hits', 'pageviews', 'target']
     monthly_sum = ['hits', 'pageviews', 'target']
 
-    # Pre-process static data 
+    # Pre-process static data
     print("Summarizing the static variables...")
     data_categoricals = one_hot_encode_categoricals(data, OHE)
     # For the columns in 'unique_values', there is only one value per customer
@@ -250,7 +253,7 @@ def aggregate_data_per_customer(data, startdate_y, startdate_x):
 
     # handle booleans by taking the mean
     data_bools = get_means_of_booleans(data, booleans)
-    
+
     # Describ num columns by getting the mean
     data_numericals = summarize_numerical_data(data, num_mean, ['mean'])
 
@@ -272,7 +275,7 @@ def aggregate_data_per_customer(data, startdate_y, startdate_x):
 
     # merge
     print("Putting it all together..")
-    df = pd.concat([data_categoricals, data_diff, data_bools, data_numericals, data_dynamic_mean, 
+    df = pd.concat([data_categoricals, data_diff, data_bools, data_numericals, data_dynamic_mean,
                     data_dynamic_count, data_dynamic_sum, data_dynamic_visits, data_dates], axis=1)
 
     # add mean time between visits

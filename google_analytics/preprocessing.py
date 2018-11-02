@@ -29,12 +29,21 @@ def load(path, nrows=None):
     return df
 
 
-def create_train_test(train, test, start_x_train='2016-08-01', end_x_train='2017-10-16', 
-                      start_y_train='2017-12-01', end_y_train='2018-02-01', start_x_test='2017-08-01', 
-                      end_x_test='2018-10-16'):
-    """ Splits the original data into x_train, y_train, and x_test based on the date of the visits. 
+def create_train_test(train, test, start_x_train='2016-08-01', end_x_train='2017-10-16',
+                      start_y_train='2017-12-01', end_y_train='2018-02-01', start_x_test='2017-08-01',
+                      end_x_test='2018-10-16', drop_users=True):
+    """ Splits the original data into x_train, y_train, and x_test based on the date of the visits.
     Besides that, it drops visitors that visit once in the training periods and never bought.
     """
+    def filter_users(data):
+        count_visits = data.groupby("fullVisitorId").size().reset_index(name='count')
+        single_visit_ids = count_visits[count_visits["count"] == 1]["fullVisitorId"]
+        sum_spent = data[["fullVisitorId", "transactionRevenue"]].groupby("fullVisitorId", as_index=False).sum()
+        no_buy_ids = sum_spent[sum_spent["transactionRevenue"] == 0]["fullVisitorId"]
+        drop_ids = set(single_visit_ids).intersection(set(no_buy_ids))
+        data = data[~data["fullVisitorId"].isin(drop_ids)]
+        return data.copy(), drop_ids
+
     merged = pd.concat([train, test], sort=False)
 
     # Split the total dataset into x_train, y_train, and x_test
@@ -42,26 +51,13 @@ def create_train_test(train, test, start_x_train='2016-08-01', end_x_train='2017
     y_train = merged[(merged["date"] >= start_y_train) & (merged["date"] < end_y_train)]
     x_test = merged[(merged["date"] >= start_x_test) & (merged["date"] < end_x_test)]
 
-    # Find visitors that visited once and never bought during the training period
-    count_visits_train = x_train.groupby("fullVisitorId").size().reset_index(name='count')
-    single_visit_ids_train = count_visits_train[count_visits_train["count"] == 1]["fullVisitorId"]
-    sum_spent_train = x_train[["fullVisitorId", "transactionRevenue"]].groupby("fullVisitorId", as_index=False).sum()
-    no_buy_ids_train = sum_spent_train[sum_spent_train["transactionRevenue"] == 0]["fullVisitorId"]
-    drop_ids_train = set(single_visit_ids_train).intersection(set(no_buy_ids_train))
-
-    count_visits_test = x_test.groupby("fullVisitorId").size().reset_index(name='count')
-    single_visit_ids_test = count_visits_test[count_visits_test["count"] == 1]["fullVisitorId"]
-    sum_spent_test = x_test[["fullVisitorId", "transactionRevenue"]].groupby("fullVisitorId", as_index=False).sum()
-    no_buy_ids_test = sum_spent_test[sum_spent_test["transactionRevenue"] == 0]["fullVisitorId"]
-    drop_ids_test = set(single_visit_ids_test).intersection(set(no_buy_ids_test))
-
     # Drop visitors that visited once and never bought during the training period from the datasets
-    x_train = x_train[~x_train["fullVisitorId"].isin(drop_ids_train)]
-    y_train = y_train[~y_train["fullVisitorId"].isin(drop_ids_train)]
-    x_test = x_test[~x_test["fullVisitorId"].isin(drop_ids_test)]
+    x_train, drop_ids_train = filter_users(x_train)
+    y_train = y_train[~y_train["fullVisitorId"].isin(drop_ids_train)].copy()
+    x_test, _ = filter_users(x_test)
 
     return x_train, y_train, x_test
-    
+
 
 def process_x(train, test):
     """ Perform basic preprocessing of Google analytics data. """
@@ -71,7 +67,7 @@ def process_x(train, test):
     const_cols = [c for c in train.columns if train[c].nunique(dropna=False) == 1]
     train = train.drop(const_cols, axis=1)
     test = test.drop(const_cols, axis=1)
-    
+
     print("Finding total visits...")
     # This could be considered an information leak as I am including
     # information about the future when predicting the revenue of a
@@ -90,7 +86,7 @@ def process_x(train, test):
 
     # Ensure correct train-test split
     merged["manual_index"] = np.arange(0, len(merged))
-    
+
     # Cast target
     merged["transactionRevenue"] = merged["transactionRevenue"].fillna(0).astype(float)
     merged["target"] = np.log(merged["transactionRevenue"] + 1)
@@ -137,26 +133,27 @@ def process_x(train, test):
     test = merged[train_len:]
     return train, test
 
+
 def process_y(y_train):
     """ Perform basic preprocessing of Google analytics target data. """
-    y_train = y_train[['fullVisitorId', 'transactionRevenue']]
-    
+    y_train = y_train[['fullVisitorId', 'transactionRevenue']].copy()
     # Cast target
     y_train["transactionRevenue"] = y_train["transactionRevenue"].fillna(0).astype(float)
     y_train["target"] = np.log(y_train["transactionRevenue"] + 1)
     del y_train["transactionRevenue"]
-    
+
     return y_train
-    
-def preprocess_and_save(data_dir, nrows_train=None, nrows_test=None, start_x_train='2016-08-01', 
-                        end_x_train='2017-10-16', start_y_train='2017-12-01', end_y_train='2018-02-01', 
-                        start_x_test='2017-08-01', end_x_test='2018-10-16'):
+
+
+def preprocess_and_save(data_dir, nrows_train=None, nrows_test=None, start_x_train='2016-08-01',
+                        end_x_train='2017-10-16', start_y_train='2017-12-01', end_y_train='2018-02-01',
+                        start_x_test='2017-08-01', end_x_test='2018-10-16', drop_users=True):
     """ Preprocess and save the train and test data as DataFrames. """
     train = load(os.path.join(data_dir, "train.csv"), nrows=nrows_train)
     test = load(os.path.join(data_dir, "test.csv"), nrows=nrows_test)
-    x_train, y_train, x_test = create_train_test(train, test, start_x_train, end_x_train, 
-                                                 start_y_train, end_y_train, start_x_test, 
-                                                 end_x_test)
+    x_train, y_train, x_test = create_train_test(train, test, start_x_train, end_x_train,
+                                                 start_y_train, end_y_train, start_x_test,
+                                                 end_x_test, drop_users=drop_users)
     x_train, x_test = process_x(x_train, x_test)
     y_train = process_y(y_train)
     x_train.to_csv(os.path.join(data_dir, "preprocessed_x_train.csv"), index=False, encoding="utf-8")
