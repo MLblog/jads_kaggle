@@ -10,10 +10,10 @@ OHE = ['channelGrouping', 'browser', 'deviceCategory', 'operatingSystem', 'city'
        'country', 'metro', 'region', 'subContinent', 'adContent',
        'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page', 'adwordsClickInfo.slot',
        'campaign', 'medium', 'source_cat', 'weekday', 'visitHour']
-OHE_reduced = ['channelGrouping', 'browser', 'deviceCategory', 'operatingSystem', 'city',
+OHE_reduced = ['channelGrouping', 'browser', 'deviceCategory', 'operatingSystem', 'city', 'continent',
                'country', 'metro', 'region', 'subContinent', 'adContent',
                'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page', 'adwordsClickInfo.slot',
-               'campaign']  # the categories to be reduced
+               'campaign', 'medium']  # the categories to be reduced
 booleans = ['isMobile', 'adwordsClickInfo.isVideoAd', 'isTrueDirect', 'keyword.isGoogle', 'keyword.isYouTube']
 cat_nunique = ['networkDomain']
 num_mean = ['totalVisits', 'keyword.mistakes_Google', 'keyword.mistakes_YouTube']
@@ -28,7 +28,7 @@ def load_train_test_dataframes(data_dir, x_train_file_name='preprocessed_x_train
                                y_train_file_name='preprocessed_y_train.csv',
                                x_test_file_name='preprocessed_x_test.csv', nrows_train=None,
                                nrows_test=None,
-                               selec_top_per=0.5,  # Percentage of categories to be include
+                               selec_top_per=0.5,
                                max_cat=5):  # The maximun number of categories to have
     """ Load the train and test DataFrames resulting from preprocessing. """
     x_train = pd.read_csv(os.path.join(data_dir, x_train_file_name),
@@ -41,10 +41,10 @@ def load_train_test_dataframes(data_dir, x_train_file_name='preprocessed_x_train
     x_test = pd.read_csv(os.path.join(data_dir + x_test_file_name),
                          dtype={"fullVisitorId": str},
                          nrows=nrows_test)
+    print('Reducing categories')
+    reduce_categories(x_train, x_test, y_train, selec_top_per, max_cat)
     x_train['date'] = x_train['date'].apply(lambda x: pd.datetime.strptime(str(x), '%Y-%m-%d'))
     x_test['date'] = x_test['date'].apply(lambda x: pd.datetime.strptime(str(x), '%Y-%m-%d'))
-    print('Reducing the categories number')
-    x_train, x_test = reduce_categories(x_train, x_test, y_train, selec_top_per, max_cat)
     return x_train, y_train, x_test
 
 
@@ -62,26 +62,22 @@ def reduce_categories(x_train, x_test, y_train, selec_top_per, max_cat):
     ------
     train and test sets with the categories reduced
     """
-    train = pd.concat([x_train, y_train], sort=False)
-    x_train = None
+    data = pd.merge(x_train, y_train, on='fullVisitorId', how='inner')
+    traget_name = data.columns[-1]
+    print(traget_name)
     y_train = None
-
     for col in OHE_reduced:
-        print('From the variable {}'.format(col))
-        if len(train[col].unique()) > max_cat:
-            top = train.groupby(col, as_index=False)['target'].sum() \
-                .sort_values(by=['target'], ascending=False).reset_index(drop=True)
-
-            top['per'] = np.cumsum(top['target'])/np.sum(top['target'])
+        if len(data[col].unique()) > max_cat:
+            top = data.groupby(col, as_index=False)[traget_name].sum() \
+                .sort_values(by=[traget_name], ascending=False).reset_index(drop=True)
+            top['per'] = np.cumsum(top[traget_name])/np.sum(top[traget_name])
             top_names = top.loc[top['per'] <= selec_top_per, col]
             # To have more than one category
-            if len(top_names) == 0:
+            if len(top_names) < max_cat:
                 top_names = top.loc[0:min(max_cat, len(top[col])), col]
-            print(top_names.values)
-            train.loc[~train[col].isin(top_names), col] = 'other category'
+            x_train.loc[~x_train[col].isin(top_names), col] = 'other category'
             x_test.loc[~x_test[col].isin(top_names), col] = 'other category'
-    del train['target']
-    return train, x_test
+    return x_train, x_test
 
 
 def one_hot_encode_categoricals(data, categorical_columns):
@@ -263,7 +259,7 @@ def add_mean_time_between_visits(df):
     return df
 
 
-def aggregate_data_per_customer(data, startdate_y, startdate_x, selec_top_per=0.2):
+def aggregate_data_per_customer(data, startdate_y, startdate_x):
     """ Aggregate the data per customer by one-hot encoding categorical
         variables and summarizing numerical variables.
 
@@ -284,7 +280,7 @@ def aggregate_data_per_customer(data, startdate_y, startdate_x, selec_top_per=0.
     """
     # Pre-process static data
     print("Summarizing the static variables...")
-    data_categoricals = one_hot_encode_categoricals(data, OHE, selec_top_per)
+    data_categoricals = one_hot_encode_categoricals(data, OHE)
     # For the columns in 'unique_values', there is only one value per customer
     # and the rest is NaN, so we need just a 1 for the value and remove the NaN columns
     data_categoricals = \
