@@ -62,9 +62,8 @@ def reduce_categories(x_train, x_test, y_train, selec_top_per, max_cat):
     ------
     train and test sets with the categories reduced
     """
-    data = pd.merge(x_train, y_train, on='fullVisitorId', how='inner')
+    data = pd.merge(x_train, y_train, on='fullVisitorId', how=='inner')
     traget_name = data.columns[-1]
-    print(traget_name)
     y_train = None
     for col in OHE_reduced:
         if len(data[col].unique()) > max_cat:
