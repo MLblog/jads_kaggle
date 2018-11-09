@@ -83,7 +83,7 @@ def summarize_numerical_data(data, cols, aggregation):
     """
     # describe columns
     data_describe = data.groupby('fullVisitorId')[cols] \
-                        .agg(aggregation)
+        .agg(aggregation)
     data_describe.columns = ['_'.join(col) for col in data_describe.columns]
     data_describe[data_describe.columns[data_describe.columns.str.contains('std')]] \
         .fillna(0, inplace=True)
@@ -173,7 +173,7 @@ def add_datetime_features(data, date_col="date"):
     """
     data[date_col] = pd.to_datetime(data[date_col])
     data_date = data.groupby(['fullVisitorId'])[date_col] \
-                    .agg(['min', 'max'])
+        .agg(['min', 'max'])
 
     data_date['days_first_to_last_visit'] = \
         (data_date['max'] - data_date['min']).dt.days
@@ -199,8 +199,7 @@ def add_mean_time_between_visits(df):
     """
     safe = df["totalVisits_mean"] > 1
     intervisit_time = np.zeros(len(df))
-    intervisit_time[safe] = df["days_first_to_last_visit"][safe] \
-        / (df["totalVisits_mean"][safe]-1)
+    intervisit_time[safe] = df["days_first_to_last_visit"][safe] / (df["totalVisits_mean"][safe] - 1)
     df["mean_intervisit_time"] = intervisit_time
     return df
 
@@ -249,7 +248,7 @@ def aggregate_data_per_customer(data, startdate_y, startdate_x):
     # categorical data with large numbers of unique values are dealt
     # with by only taking the number of unique values per customer
     data_diff = data.groupby(['fullVisitorId'])[cat_nunique] \
-                    .nunique().add_suffix('_#diff')
+        .nunique().add_suffix('_#diff')
 
     # handle booleans by taking the mean
     data_bools = get_means_of_booleans(data, booleans)
@@ -283,6 +282,15 @@ def aggregate_data_per_customer(data, startdate_y, startdate_x):
     print("Done")
 
     return df
+
+
+def aggregate_and_fit_y(y_train, x_train_aggregated):
+    """This function aggregates y data and fits it to the fullVisitorId's of the x data"""
+
+    y_train = y_train.groupby(['fullVisitorId'])[['target']].sum().reset_index().copy()
+    y_train = pd.merge(pd.DataFrame(x_train_aggregated.index), y_train, on='fullVisitorId', how='left')
+    y_train['target'] = y_train['target'].fillna(0)
+    return y_train
 
 
 def ohe_explicit(df):
