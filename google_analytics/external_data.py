@@ -1,13 +1,11 @@
 import pandas as pd
 import numpy as np
 
-
 def get_gdp(path):
     """Process the raw GDP per capita data originally
     downloaded from `https://data.worldbank.org/indicator/NY.GDP.PCAP.CD`
-
-    Returns the mapping between country and GDP.
-
+     Returns the mapping between country and GDP.
+    
     Examples
     --------
     >>> gdp = get_gdp("../data/raw_gdp.csv")
@@ -18,35 +16,44 @@ def get_gdp(path):
     2 	Angola 	       4170.0
     3 	Albania 	   4537.0
     4 	Andorra 	   39146.0
-
+    
     Parameters
     ----------
     path : str
         Path to the raw file.
-
+    
     Returns
     -------
     pd.DataFrame
         Mapping between country and latest known GDP.
-
-    """
+     """
     gdp = pd.read_csv(path, skiprows=4)
-
     def forward_fill(row, year=2017):
         """Get the data for the last available year. """
         if year < 1960:
             # All values are missing.
             return np.nan
-
         value = row[str(year)]
         if not np.isnan(value):
             return int(value)
-
-        # Recursively look at the previous year
+         # Recursively look at the previous year
         return forward_fill(row, year - 1)
-
     gdp["GDP"] = gdp.apply(forward_fill, axis=1)
-    return gdp[["Country Name", "GDP"]].dropna(subset=['GDP']).rename(columns={"Country Name": "country"})
+    
+    # fix some mismatch of countries: 
+    # The total mismatch is 5% of all data, fix the 8 countries below can reduce the mistach to 0.5%
+    gdp.loc[gdp["Country Name"] == "Russian Federation", "Country Name"] = "Russia"
+    gdp.loc[gdp["Country Name"] == "Korea, Rep.", "Country Name"] = "South Korea"
+    gdp.loc[gdp["Country Name"] == "Hong Kong SAR, China", "Country Name"] = "Hong Kong"
+    gdp.loc[gdp["Country Name"] == "Czech Republic", "Country Name"] = "Czechia"
+    gdp.loc[gdp["Country Name"] == "Egypt, Arab Rep.", "Country Name"] = "Egypt"  
+    gdp.loc[gdp["Country Name"] == "Venezuela, RB", "Country Name"] = "Venezuela"
+    gdp.loc[gdp["Country Name"] == "Slovak Republic", "Country Name"] = "Slovakia"  
+    
+    gdp_drop = gdp[["Country Name", "GDP"]].dropna(subset=['GDP']).rename(columns={"Country Name": "country"}).reset_index(drop=True)
+    gdp_drop.loc[gdp_drop.index[-1] + 1] = ["Taiwan", 31900]
+    
+    return gdp_drop
 
 
 def add_gdp(df, gdp, input_type="raw", drop=True):
