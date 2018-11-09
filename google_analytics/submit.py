@@ -50,6 +50,8 @@ def create_submission(predictor_cls, params, train_x, train_y, test_x,
     print("Creating submission...")
     submission = pd.merge(sample_submission[["fullVisitorId"]], prediction, on="fullVisitorId", how="left")
     submission["PredictedLogRevenue"] = submission["PredictedLogRevenue"].fillna(0)
+    # set everything below $1 to zero
+    submission["PredictedLogRevenue"][submission["PredictedLogRevenue"] < 1] = 0
 
     if save:
         print("Saving submission file...")
