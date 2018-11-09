@@ -1,8 +1,9 @@
 import pandas as pd
 
 
-def create_submission(predictor_cls, params, train_x, train_y, test_x, test_ids,
-                      save=True, path="../submissions/submission.csv"):
+def create_submission(predictor_cls, params, train_x, train_y, test_x,
+                      save=True, path="../submissions/submission.csv",
+                      path_sample_submission="../data/sample_submission.csv"):
     """ Create a submission file.
 
     Parameters
@@ -17,13 +18,12 @@ def create_submission(predictor_cls, params, train_x, train_y, test_x, test_ids,
         The target variable of the training data.
     test_x: pd.DataFrame
         The test data features.
-    test_ids: array-like
-        The fullVisitorIds corresponding to the test features. These are needed to
-        create the submission file.
     save: boolean
         Whether to save the submission file as csv or just to return it as a DataFrame.
     path: str
         The path to where the submission should be saved. Ignored if save==False.
+    path_sample_submission: str
+        The path where the sample submission file is saved.
 
     Returns
     -------
@@ -31,16 +31,25 @@ def create_submission(predictor_cls, params, train_x, train_y, test_x, test_ids,
     can be saved as csv (data.to_csv(path, index=False)) and then uploaded to Kaggle.
     """
 
-    assert len(test_ids) == 617242, \
-        "test_ids contains {} rows, while 617,242 are expected.".format(len(test_ids))
+    try:
+        sample_submission = pd.read_csv(path_sample_submission, dtype={'fullVisitorId': 'str'})
+    except IOError:
+        print(str(path_sample_submission) + " is not found.")
+    assert sample_submission.shape[0] == 617242, \
+        "test_ids contains {} rows, while 617,242 are expected.".format(sample_submission.shape[0])
 
     print("Fitting model...")
     model = predictor_cls(**params)
     model.fit(train_x, train_y)
+
     print("Predicting...")
-    test_y = model.predict(test_x)
+    prediction = pd.DataFrame()
+    prediction["fullVisitorId"] = test_x["fullVisitorId"]
+    prediction["PredictedLogRevenue"] = model.predict(test_x)
+
     print("Creating submission...")
-    submission = pd.concat([test_ids, pd.Series(test_y, name="PredictedLogRevenue")], axis=1)
+    submission = pd.merge(sample_submission[["fullVisitorId"]], prediction, on="fullVisitorId", how="left")
+    submission["PredictedLogRevenue"] = submission["PredictedLogRevenue"].fillna(0)
 
     if save:
         print("Saving submission file...")
