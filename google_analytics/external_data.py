@@ -6,7 +6,7 @@ def get_gdp(path):
     """Process the raw GDP per capita data originally
     downloaded from `https://data.worldbank.org/indicator/NY.GDP.PCAP.CD`
      Returns the mapping between country and GDP.
-   
+
     Examples
     --------
     >>> gdp = get_gdp("../data/raw_gdp.csv")
@@ -42,15 +42,15 @@ def get_gdp(path):
         return forward_fill(row, year - 1)
     gdp["GDP"] = gdp.apply(forward_fill, axis=1)
 
-    # fix some mismatch of countries: 
+    # fix some mismatch of countries:
     # The total mismatch is 5% of all data, fix the 8 countries below can reduce the mistach to 0.5%
     gdp.loc[gdp["Country Name"] == "Russian Federation", "Country Name"] = "Russia"
     gdp.loc[gdp["Country Name"] == "Korea, Rep.", "Country Name"] = "South Korea"
     gdp.loc[gdp["Country Name"] == "Hong Kong SAR, China", "Country Name"] = "Hong Kong"
     gdp.loc[gdp["Country Name"] == "Czech Republic", "Country Name"] = "Czechia"
-    gdp.loc[gdp["Country Name"] == "Egypt, Arab Rep.", "Country Name"] = "Egypt"  
+    gdp.loc[gdp["Country Name"] == "Egypt, Arab Rep.", "Country Name"] = "Egypt"
     gdp.loc[gdp["Country Name"] == "Venezuela, RB", "Country Name"] = "Venezuela"
-    gdp.loc[gdp["Country Name"] == "Slovak Republic", "Country Name"] = "Slovakia"  
+    gdp.loc[gdp["Country Name"] == "Slovak Republic", "Country Name"] = "Slovakia"
 
     gdp_drop = gdp[["Country Name", "GDP"]].dropna(subset=['GDP']).rename(columns={"Country Name": "country"}).reset_index(drop=True)
     gdp_drop.loc[gdp_drop.index[-1] + 1] = ["Taiwan", 31900]
