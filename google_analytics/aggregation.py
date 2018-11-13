@@ -1,7 +1,11 @@
+import json
+import datetime
 import os
-import warnings
-import numpy as np
-import pandas as pd
+import time
+import sys
+import shutil
+import glob
+import re
 
 
 def reduce_df(path, output, nrows=None, chunksize=20000):
@@ -92,7 +96,10 @@ def aggregate(df):
         return "{}_{}".format(date.month, date.year)
 
     df["date"] = df["date"].apply(agg_date)
-    most_frequent = lambda x: x.value_counts().index[0]
+
+    def most_frequent(x):
+        return x.value_counts().index[0]
+
     agg = {
         "operatingSystem": most_frequent,
         "country": most_frequent,
@@ -115,7 +122,7 @@ def aggregate(df):
     wide.reset_index(inplace=True)
 
     # Now let's also get the static columns.
-    static_columns = list(set(test.columns) - set(dynamic_columns) - {"date"})
+    static_columns = list(set(grouped.columns) - set(dynamic_columns) - {"date"})
     static = grouped[static_columns]
 
     # Regroup on visitor.
