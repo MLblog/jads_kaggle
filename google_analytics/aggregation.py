@@ -4,6 +4,129 @@ import numpy as np
 import pandas as pd
 
 
+def reduce_df(path, output, nrows=None, chunksize=20000):
+    """ Load Google analytics data from JSON into a Pandas.DataFrame. """
+    if nrows and chunksize:
+        msg = "Reading {} rows in chunks of {}. We are gonna need {} chunks"
+        print(msg.format(nrows, chunksize, nrows / chunksize))
+
+    temp_dir = "../data/temp"
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+
+    JSON_COLUMNS = ['device', 'geoNetwork', 'totals', 'trafficSource']
+
+    i = 0
+    for chunk in pd.read_csv(path,
+                             converters={column: json.loads for column in JSON_COLUMNS},
+                             dtype={'fullVisitorId': 'str'},
+                             nrows=nrows,
+                             chunksize=chunksize):
+
+        chunk = chunk.reset_index()
+
+        # Normalize JSON columns
+        for column in JSON_COLUMNS:
+            column_as_df = pd.io.json.json_normalize(chunk[column])
+            chunk = chunk.drop(column, axis=1).merge(column_as_df, right_index=True, left_index=True)
+
+        # Parse date
+        chunk['date'] = chunk['date'].apply(lambda x: pd.datetime.strptime(str(x), '%Y%m%d'))
+
+        # Only keep relevant columns
+        cols = ['date', 'fullVisitorId', 'operatingSystem', 'country', 'browser',
+                'pageviews', 'transactions', 'visits', 'transactionRevenue']
+        try:
+            chunk = chunk[cols]
+        except KeyError as e:
+            # Regex magic to find exactly which columns were not found.
+            # Might be different in Python 3, be careful!
+            missing_cols = list(re.findall(r"'(.*?)'", e.args[0]))
+            for col in missing_cols:
+                print("Column {} was not found in chunk {}, filling with zeroes".format(col, i))
+                chunk[col] = [0] * len(chunk)
+            chunk = chunk[cols]
+
+        print("Loaded chunk {}, Shape is: {}".format(i, chunk.shape))
+        chunk.to_csv(os.path.join(temp_dir, str(i) + ".csv"), encoding='utf-8', index=False)
+        i += 1
+
+    print("Finished all chunks, now concatenating")
+    files = glob.glob(os.path.join(temp_dir, "*.csv"))
+    with open(output, 'wb') as outfile:
+        for i, fname in enumerate(files):
+            with open(fname, 'rb') as infile:
+                # Throw away header on all but first file
+                if i != 0:
+                    infile.readline()
+                    # Block copy rest of file from input to output without parsing
+                shutil.copyfileobj(infile, outfile)
+
+
+def aggregate(df):
+    """Group and pivot the dataframe so that we have one row per visitor.
+
+    This row includes features of two types:
+      * Dynamic. These are repeated for each month and capture the time-series like behavior.
+                 Some examples are the revenue and visits per month, for every month in the dataset.
+
+      * Static. These exist once per user and correspond to relatively constant properties.
+                Examples include the person's country, OS and browser.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The original reduced dataframe - see the `reduce_df` function
+
+    Returns
+    -------
+    pd.DataFrame
+        The same dataframe grouped and pivoted, where each visitor is a single row.
+
+    """
+    df['transactions'].fillna(0, inplace=True)
+    df['transactionRevenue'].fillna(0.0, inplace=True)
+
+    def agg_date(s):
+        date = pd.datetime.strptime(s, '%Y-%m-%d')
+        return "{}_{}".format(date.month, date.year)
+
+    df["date"] = df["date"].apply(agg_date)
+    most_frequent = lambda x: x.value_counts().index[0]
+    agg = {
+        "operatingSystem": most_frequent,
+        "country": most_frequent,
+        "browser": most_frequent,
+        "pageviews": sum,
+        "transactions": sum,
+        "visits": sum,
+        "transactionRevenue": sum
+    }
+
+    print("First grouping, this will take a while")
+    grouped = df.groupby(["fullVisitorId", "date"], as_index=False).agg(agg)
+
+    # Long to wide pivot - one row per visitor.
+    dynamic_columns = ['transactionRevenue', 'visits', 'transactions', 'pageviews']
+    wide = pd.pivot_table(grouped, index='fullVisitorId', columns='date', values=dynamic_columns)
+
+    # Collapse multi-index.
+    wide.columns = wide.columns.to_series().str.join('_')
+    wide.reset_index(inplace=True)
+
+    # Now let's also get the static columns.
+    static_columns = list(set(test.columns) - set(dynamic_columns) - {"date"})
+    static = grouped[static_columns]
+
+    # Regroup on visitor.
+    print("Regroup again to get the static fields - this will take a while")
+    agg = {col: most_frequent for col in static_columns if col != "fullVisitorId"}
+    static_grouped = static.groupby("fullVisitorId", as_index=False).agg(agg)
+
+    # Merge dynamic and static features.
+    return wide.merge(static_grouped, on="fullVisitorId", how="inner")
+
+
 def load_train_test_dataframes(data_dir, x_train_file_name='preprocessed_x_train.csv',
                                y_train_file_name='preprocessed_y_train.csv',
                                x_test_file_name='preprocessed_x_test.csv', nrows_train=None,
