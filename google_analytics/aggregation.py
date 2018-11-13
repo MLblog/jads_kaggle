@@ -7,6 +7,8 @@ import shutil
 import glob
 import re
 
+import pandas as pd
+
 
 def reduce_df(path, output, nrows=None, chunksize=20000):
     """ Load Google analytics data from JSON into a Pandas.DataFrame. """
