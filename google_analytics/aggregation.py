@@ -40,7 +40,7 @@ def reduce_df(path, output, nrows=None, chunksize=20000):
 
         # Only keep relevant columns
         cols = ['date', 'fullVisitorId', 'operatingSystem', 'country', 'browser',
-                'pageviews', 'transactions', 'visits', 'transactionRevenue']
+                'pageviews', 'transactions', 'visits', 'transactionRevenue', 'visitStartTime']
         try:
             chunk = chunk[cols]
         except KeyError as e:
@@ -64,8 +64,11 @@ def reduce_df(path, output, nrows=None, chunksize=20000):
                 # Throw away header on all but first file
                 if i != 0:
                     infile.readline()
-                    # Block copy rest of file from input to output without parsing
+                # Block copy rest of file from input to output without parsing
                 shutil.copyfileobj(infile, outfile)
+
+    print("Deleting temp folder {}".format(temp_dir))
+    shutil.rmtree(temp_dir)
 
 
 def aggregate(df):
@@ -108,7 +111,8 @@ def aggregate(df):
         "pageviews": sum,
         "transactions": sum,
         "visits": sum,
-        "transactionRevenue": sum
+        "transactionRevenue": sum,
+        "visitStartTime": "first"
     }
 
     print("First grouping, this will take a while")
@@ -128,7 +132,8 @@ def aggregate(df):
 
     # Regroup on visitor.
     print("Regroup again to get the static fields - this will take a while")
-    agg = {col: most_frequent for col in static_columns if col != "fullVisitorId"}
+    for key in dynamic_columns:
+        agg.pop(key, None)
     static_grouped = static.groupby("fullVisitorId", as_index=False).agg(agg)
 
     # Merge dynamic and static features.
