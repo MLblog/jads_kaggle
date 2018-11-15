@@ -24,21 +24,22 @@ monthly_mean = ['hits', 'pageviews', 'target']
 monthly_sum = ['hits', 'pageviews', 'target']
 
 
-def load_train_test_dataframes(data_dir, x_train_file_name='preprocessed_x_train.csv',
-                               y_train_file_name='preprocessed_y_train.csv',
-                               x_test_file_name='preprocessed_x_test.csv', nrows_train=None,
+def load_train_test_dataframes(x_train_file_name='../data/preprocessed_x_train.csv',
+                               y_train_file_name='../data/preprocessed_y_train.csv',
+                               x_test_file_name='../data/preprocessed_x_test.csv', 
+                               nrows_train=None,
                                nrows_test=None,
                                selec_top_per=0.5,
                                max_cat=5):  # The maximun number of categories to have
     """ Load the train and test DataFrames resulting from preprocessing. """
-    x_train = pd.read_csv(os.path.join(data_dir, x_train_file_name),
+    x_train = pd.read_csv(x_train_file_name,
                           dtype={"fullVisitorId": str},
                           nrows=nrows_train)
 
-    y_train = pd.read_csv(os.path.join(data_dir, y_train_file_name),
+    y_train = pd.read_csv(y_train_file_name,
                           dtype={"fullVisitorId": str})
 
-    x_test = pd.read_csv(os.path.join(data_dir + x_test_file_name),
+    x_test = pd.read_csv(x_test_file_name,
                          dtype={"fullVisitorId": str},
                          nrows=nrows_test)
     print('Reducing categories')
@@ -63,13 +64,13 @@ def reduce_categories(x_train, x_test, y_train, selec_top_per, max_cat):
     train and test sets with the categories reduced
     """
     data = pd.merge(x_train, y_train, on='fullVisitorId', how='inner')
-    traget_name = data.columns[-1]
+    target_name = data.columns[-1]
     y_train = None
     for col in OHE_reduced:
         if len(data[col].unique()) > max_cat:
-            top = data.groupby(col, as_index=False)[traget_name].sum() \
-                .sort_values(by=[traget_name], ascending=False).reset_index(drop=True)
-            top['per'] = np.cumsum(top[traget_name])/np.sum(top[traget_name])
+            top = data.groupby(col, as_index=False)[target_name].sum() \
+                .sort_values(by=[target_name], ascending=False).reset_index(drop=True)
+            top['per'] = np.cumsum(top[target_name])/np.sum(top[target_name])
             top_names = top.loc[top['per'] <= selec_top_per, col]
             # To have more than one category
             if len(top_names) < max_cat:
