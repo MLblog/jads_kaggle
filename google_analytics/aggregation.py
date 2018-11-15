@@ -1,4 +1,3 @@
-import os
 import warnings
 import numpy as np
 import pandas as pd
@@ -26,7 +25,7 @@ monthly_sum = ['hits', 'pageviews', 'target']
 
 def load_train_test_dataframes(x_train_file_name='../data/preprocessed_x_train.csv',
                                y_train_file_name='../data/preprocessed_y_train.csv',
-                               x_test_file_name='../data/preprocessed_x_test.csv', 
+                               x_test_file_name='../data/preprocessed_x_test.csv',
                                nrows_train=None,
                                nrows_test=None,
                                selec_top_per=0.5,
