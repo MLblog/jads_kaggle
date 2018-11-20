@@ -145,7 +145,7 @@ def group_data(df):
     return df.groupby(["fullVisitorId", "date_temp"], as_index=False).agg(agg)
 
 
-def split_data(train, test, x_train_dates=('2016-08-01', '2017-11-30'), y_test_dates=('2017-12-01', '2018-01-31'),
+def split_data(train, test, x_train_dates=('2016-08-01', '2017-11-30'), y_train_dates=('2017-12-01', '2018-01-31'),
                x_test_dates=('2017-08-01', '2018-11-30'), selec_top_per=0.5, max_cat=10):
     """A funtion to plit and preprocess the datasets
 
@@ -167,7 +167,7 @@ def split_data(train, test, x_train_dates=('2016-08-01', '2017-11-30'), y_test_d
 
     # Split in train and test
     x_train = merged[(merged["date"] >= x_train_dates[0]) & (merged["date"] <= x_train_dates[1])]
-    y_train = merged.loc[(merged["date"] >= y_test_dates[0]) & (merged["date"] <= y_test_dates[1]), ['transactionRevenue', 'fullVisitorId']]
+    y_train = merged.loc[(merged["date"] >= y_train_dates[0]) & (merged["date"] <= y_train_dates[1]), ['transactionRevenue', 'fullVisitorId']]
     y_train['target'] = y_train.groupby(['fullVisitorId'], as_index=False)['transactionRevenue'].sum()['transactionRevenue']
     y_train['target'] = np.log(y_train['target'] + 1)
     del y_train['transactionRevenue']
