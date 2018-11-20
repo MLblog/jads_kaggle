@@ -7,6 +7,7 @@ import warnings
 
 import pandas as pd
 import numpy as np
+from natsort import natsorted  # install using: conda install -c anaconda natsort
 
 
 def reduce_df(path, output, nrows=None, chunksize=20000):
@@ -19,7 +20,7 @@ def reduce_df(path, output, nrows=None, chunksize=20000):
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
 
-    JSON_COLUMNS = ['device', 'geoNetwork', 'totals', 'trafficSource']
+    JSON_COLUMNS = ['device', 'geoNetwork', 'totals', 'trafficSource'] # noqa
 
     i = 0
     for chunk in pd.read_csv(path,
@@ -92,58 +93,147 @@ def aggregate(df):
         The same dataframe grouped and pivoted, where each visitor is a single row.
 
     """
-    df['transactions'].fillna(0, inplace=True)
-    df['transactionRevenue'].fillna(0.0, inplace=True)
-
-    def agg_date(s):
-        date = pd.datetime.strptime(s, '%Y-%m-%d')
-        return "{}_{}".format(date.month, date.year)
-
-    df["date"] = df["date"].apply(agg_date)
-
-    def most_frequent(x):
-        return x.value_counts().index[0]
-
-    agg = {
-        "operatingSystem": most_frequent,
-        "country": most_frequent,
-        "browser": most_frequent,
-        "pageviews": sum,
-        "transactions": sum,
-        "visits": sum,
-        "transactionRevenue": sum,
-        "visitStartTime": "first"
-    }
-
-    print("First grouping, this will take a while")
-    grouped = df.groupby(["fullVisitorId", "date"], as_index=False).agg(agg)
-
     # Long to wide pivot - one row per visitor.
     dynamic_columns = ['transactionRevenue', 'visits', 'transactions', 'pageviews']
-    wide = pd.pivot_table(grouped, index='fullVisitorId', columns='date', values=dynamic_columns)
+    wide = pd.pivot_table(df, index='fullVisitorId', columns='date_temp', values=dynamic_columns)
 
     # Collapse multi-index.
     wide.columns = wide.columns.to_series().str.join('_')
     wide.reset_index(inplace=True)
 
     # Now let's also get the static columns.
-    static_columns = list(set(grouped.columns) - set(dynamic_columns) - {"date"})
-    static = grouped[static_columns]
+    static_columns = list(set(df.columns) - set(dynamic_columns) - {"date"} - {"date_temp"})
+    static = df[static_columns]
 
     # Regroup on visitor.
     print("Regroup again to get the static fields - this will take a while")
-    for key in dynamic_columns:
-        agg.pop(key, None)
-    static_grouped = static.groupby("fullVisitorId", as_index=False).agg(agg)
-
+    static_grouped = static.groupby("fullVisitorId", as_index=False)[static_columns].sum()
     # Merge dynamic and static features.
-    return wide.merge(static_grouped, on="fullVisitorId", how="inner")
+    df = static_grouped.merge(wide, on="fullVisitorId", how="inner")
+    return df[natsorted(df.columns, key=lambda y: y.lower())]
+
+
+def group_data(df):
+    """ Aggregates the data per user and date
+    """
+    def most_frequent(x):
+        return x.value_counts().index[0]
+
+    agg = {
+            "operatingSystem": most_frequent,
+            "country": most_frequent,
+            "browser": most_frequent,
+            "weekday": most_frequent,
+            "pageviews": sum,
+            "transactions": sum,
+            "visits": sum,
+            "transactionRevenue": sum,
+            "visitStartTime": "first",
+            "date": "first"
+        }
+
+    def agg_date(s):
+        try:
+            date = pd.datetime.strptime(str(s), '%Y-%m-%d')
+            return "{}_{}".format(date.month, date.year)
+        except ValueError:
+            return "{}_{}".format(s.month, s.year)
+
+    df["date_temp"] = df["date"].apply(agg_date)
+
+    print("First grouping, this will take a while")
+    return df.groupby(["fullVisitorId", "date_temp"], as_index=False).agg(agg)
+
+
+def split_data(train, test, x_train_dates=('2016-08-01', '2017-11-30'), y_test_dates=('2017-12-01', '2018-01-31'),
+               x_test_dates=('2017-08-01', '2018-11-30'), selec_top_per=0.5, max_cat=10):
+    """A funtion to plit and preprocess the datasets
+
+    """
+    merged = pd.concat([train, test], sort=False)
+    merged['transactions'].fillna(0, inplace=True)
+    merged['transactionRevenue'].fillna(0.0, inplace=True)
+    # Create some features
+    merged['date'] = merged['date'].apply(lambda x: pd.datetime.strptime(str(x), '%Y-%m-%d'))
+    merged['weekday'] = merged['date'].apply(lambda x: x.weekday())
+
+    # Aggregate the dataset
+    merged = group_data(merged)
+    # Reduce categories on static columns
+    OHE_reduce = ['operatingSystem', 'country', 'browser']  # noqa
+    merged = reduce_categories(merged, OHE_reduce, selec_top_per, max_cat)
+    # create OHE
+    merged = one_hot_encode_categoricals(merged)
+
+    # Split in train and test
+    x_train = merged[(merged["date"] >= x_train_dates[0]) & (merged["date"] <= x_train_dates[1])]
+    y_train = merged.loc[(merged["date"] >= y_test_dates[0]) & (merged["date"] <= y_test_dates[1]), ['transactionRevenue', 'fullVisitorId']]
+    y_train['target'] = y_train.groupby(['fullVisitorId'], as_index=False)['transactionRevenue'].sum()['transactionRevenue']
+    y_train['target'] = np.log(y_train['target'] + 1)
+    del y_train['transactionRevenue']
+    x_test = merged[(merged["date"] >= x_test_dates[0]) & (merged["date"] <= x_test_dates[1])]
+
+    # create dynamic features
+    x_train = aggregate(x_train)
+    x_train.columns = [x.replace('2016', '1') for x in x_train.columns]
+    x_train.columns = [x.replace('2017', '2') for x in x_train.columns]
+
+    x_test = aggregate(x_test)
+    x_test.columns = [x.replace('2017', '1') for x in x_test.columns]
+    x_test.columns = [x.replace('2018', '2') for x in x_test.columns]
+
+    # Guarantee that the names are the same in train and test
+    names_train = set(x_train.columns.values)
+    names_test = set(x_test.columns.values)
+    names = list(names_train.intersection(names_test))
+
+    # Guarantee the same users
+    names_x = x_train.columns.values
+    names_y = y_train.columns.values
+    merged = x_train.merge(y_train, on="fullVisitorId", how="inner")
+    x_train = merged[names_x]
+    y_train = merged[names_y]
+
+    return x_train[names], y_train, x_test[names]
+
+
+def reduce_categories(df, ohe_reduce, selec_top_per, max_cat):
+    """ Reduce the number of catergories based 'target' values
+
+    Params
+    ------
+    selec_top_per: float
+    The percentage of top categories to be included.
+
+    max_cat: int
+    The maximun number of categories to have.
+
+    Return
+    ------
+    pd.DataFrame
+        df with the categories reduced
+    """
+
+    target_name = 'transactionRevenue'
+    for col in ohe_reduce:
+        print('Reducing the OHE of {}'.format(col))
+        if len(df[col].unique()) > max_cat:
+            top = df.groupby(col, as_index=False)[target_name].sum() \
+                .sort_values(by=[target_name], ascending=False).reset_index(drop=True)
+            top['per'] = np.cumsum(top[target_name])/np.sum(top[target_name])
+            top_names = top.loc[top['per'] <= selec_top_per, col]
+            # To have more than one category
+            if len(top_names) < max_cat:
+                top_names = top.loc[0:min(max_cat, len(top[col])), col]
+            df.loc[~df[col].isin(top_names), col] = 'other category'
+
+    return df
 
 
 def load_train_test_dataframes(data_dir, x_train_file_name='preprocessed_x_train.csv',
                                y_train_file_name='preprocessed_y_train.csv',
                                x_test_file_name='preprocessed_x_test.csv', nrows_train=None,
-                               nrows_test=None):
+                               nrows_test=None, selec_top_per=0.5, max_cat=5):
     """ Load the train and test DataFrames resulting from preprocessing. """
     x_train = pd.read_csv(os.path.join(data_dir, x_train_file_name),
                           dtype={"fullVisitorId": str},
@@ -161,7 +251,7 @@ def load_train_test_dataframes(data_dir, x_train_file_name='preprocessed_x_train
     return x_train, y_train, x_test
 
 
-def one_hot_encode_categoricals(data, categorical_columns):
+def one_hot_encode_categoricals(data):
     """ Transform categorical data to one-hot encoding and
         aggregate per customer.
 
@@ -182,16 +272,16 @@ def one_hot_encode_categoricals(data, categorical_columns):
     ------
     The one-hot encoded DataFrame.
     """
-    for col in categorical_columns:
+    OHE = ['operatingSystem', 'country', 'browser', 'weekday']  # noqa
+    for col in OHE:
         if data[col].dtypes in ["int64", "float64"]:
             warnings.warn("Column {} converted to from numeric to category".format(col))
             data[col] = data[col].astype("category")
-    if categorical_columns == ['nr_months_ago']:
-        encoded = pd.get_dummies(data[categorical_columns], prefix=['nr_visits'])
-    else:
-        encoded = pd.get_dummies(data[categorical_columns], prefix=categorical_columns)
-    encoded["fullVisitorId"] = data["fullVisitorId"]
-    return encoded.groupby("fullVisitorId").sum()
+        print('Creating the OHE of {}'.format(col))
+        # create categories
+        data = pd.concat([data, pd.get_dummies(data[col], prefix='category_')], sort=False)
+        del data[col]
+    return data
 
 
 def summarize_numerical_data(data, cols, aggregation):
@@ -361,7 +451,7 @@ def aggregate_data_per_customer(data, startdate_y, startdate_x):
 
     # Specify what to do with each column
     # Static
-    OHE = ['channelGrouping', 'browser', 'deviceCategory', 'operatingSystem', 'city', 'continent',
+    OHE = ['channelGrouping', 'browser', 'deviceCategory', 'operatingSystem', 'city', 'continent',  # noqa
            'country', 'metro', 'region', 'subContinent', 'adContent',
            'adwordsClickInfo.adNetworkType', 'adwordsClickInfo.page', 'adwordsClickInfo.slot',
            'campaign', 'medium', 'source_cat', 'weekday', 'visitHour']
