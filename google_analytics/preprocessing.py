@@ -29,7 +29,37 @@ def load(path, nrows=None):
     return df
 
 
-def process(train, test):
+def create_train_test(train, test, start_x_train='2016-08-01', end_x_train='2017-10-16',
+                      start_y_train='2017-12-01', end_y_train='2018-02-01', start_x_test='2017-08-01',
+                      end_x_test='2018-10-16', drop_users=True):
+    """ Splits the original data into x_train, y_train, and x_test based on the date of the visits.
+    Besides that, it drops visitors that visit once in the training periods and never bought.
+    """
+    def filter_users(data):
+        count_visits = data.groupby("fullVisitorId").size().reset_index(name='count')
+        single_visit_ids = count_visits[count_visits["count"] == 1]["fullVisitorId"]
+        sum_spent = data[["fullVisitorId", "transactionRevenue"]].groupby("fullVisitorId", as_index=False).sum()
+        no_buy_ids = sum_spent[sum_spent["transactionRevenue"] == 0]["fullVisitorId"]
+        drop_ids = set(single_visit_ids).intersection(set(no_buy_ids))
+        data = data[~data["fullVisitorId"].isin(drop_ids)]
+        return data.copy(), drop_ids
+
+    merged = pd.concat([train, test], sort=False)
+
+    # Split the total dataset into x_train, y_train, and x_test
+    x_train = merged[(merged["date"] >= start_x_train) & (merged["date"] < end_x_train)]
+    y_train = merged[(merged["date"] >= start_y_train) & (merged["date"] < end_y_train)]
+    x_test = merged[(merged["date"] >= start_x_test) & (merged["date"] < end_x_test)]
+
+    # Drop visitors that visited once and never bought during the training period from the datasets
+    x_train, drop_ids_train = filter_users(x_train)
+    y_train = y_train[~y_train["fullVisitorId"].isin(drop_ids_train)].copy()
+    x_test, _ = filter_users(x_test)
+
+    return x_train, y_train, x_test
+
+
+def process_x(train, test):
     """ Perform basic preprocessing of Google analytics data. """
 
     print("Dropping constant columns...")
@@ -38,16 +68,29 @@ def process(train, test):
     train = train.drop(const_cols, axis=1)
     test = test.drop(const_cols, axis=1)
 
-    # Cast target
-    train["transactionRevenue"] = train["transactionRevenue"].fillna(0).astype(float)
-    train["target"] = np.log(train["transactionRevenue"] + 1)
-    del train["transactionRevenue"]
+    print("Finding total visits...")
+    # This could be considered an information leak as I am including
+    # information about the future when predicting the revenue of a
+    # transaction. In reality, when looking at the 3rd visit we would
+    # have no way of knowning that the user will actually shop X more
+    # times (or if he will visit again at all). However since this
+    # info also exists in the test set we might use it.
+    # Update: in the new competition I think this is no data leakage anymore.
+    total_visits = train[["fullVisitorId", "visitNumber"]].groupby('fullVisitorId').size().reset_index(name='totalVisits')
+    train = train.merge(total_visits, on='fullVisitorId')
+    total_visits = test[["fullVisitorId", "visitNumber"]].groupby('fullVisitorId').size().reset_index(name='totalVisits')
+    test = test.merge(total_visits, on='fullVisitorId')
 
     train_len = train.shape[0]
     merged = pd.concat([train, test], sort=False)
 
     # Ensure correct train-test split
     merged["manual_index"] = np.arange(0, len(merged))
+
+    # Cast target
+    merged["transactionRevenue"] = merged["transactionRevenue"].fillna(0).astype(float)
+    merged["target"] = np.log(merged["transactionRevenue"] + 1)
+    del merged["transactionRevenue"]
 
     # Change values as "not available in demo dataset", "(not set)",
     # "unknown.unknown", "(not provided)" to nan.
@@ -76,23 +119,13 @@ def process(train, test):
     merged['month'] = merged['date'].apply(lambda x: x.month)
     merged['quarterMonth'] = merged['date'].apply(lambda x: x.day // 8)
     merged['weekday'] = merged['date'].apply(lambda x: x.weekday())
+    merged['year'] = merged['date'].apply(lambda x: x.year)
     merged['visitHour'] = pd.to_datetime(merged['visitStartTime']
                                          .apply(lambda t: time.strftime('%Y-%m-%d %H:%M:%S',
                                                 time.localtime(t)))) \
         .apply(lambda t: t.hour)
 
     del merged['visitStartTime']
-
-    print("Finding total visits...")
-    # This could be considered an information leak as I am including
-    # information about the future when predicting the revenue of a
-    # transaction. In reality, when looking at the 3rd visit we would
-    # have no way of knowning that the user will actually shop X more
-    # times (or if he will visit again at all). However since this
-    # info also exists in the test set we might use it.
-    total_visits = merged[["fullVisitorId", "visitNumber"]].groupby("fullVisitorId", as_index=False).max()
-    total_visits.rename(columns={"visitNumber": "totalVisits"}, inplace=True)
-    merged = merged.merge(total_visits)
 
     print("Splitting back...")
     merged.sort_values(by="manual_index", ascending=True, inplace=True)
@@ -101,14 +134,31 @@ def process(train, test):
     return train, test
 
 
-def preprocess_and_save(data_dir, nrows_train=None, nrows_test=None):
+def process_y(y_train):
+    """ Perform basic preprocessing of Google analytics target data. """
+    y_train = y_train[['fullVisitorId', 'transactionRevenue']].copy()
+    # Cast target
+    y_train["transactionRevenue"] = y_train["transactionRevenue"].fillna(0).astype(float)
+    y_train["target"] = np.log(y_train["transactionRevenue"] + 1)
+    del y_train["transactionRevenue"]
+
+    return y_train
+
+
+def preprocess_and_save(data_dir, nrows_train=None, nrows_test=None, start_x_train='2016-08-01',
+                        end_x_train='2017-10-16', start_y_train='2017-12-01', end_y_train='2018-02-01',
+                        start_x_test='2017-08-01', end_x_test='2018-10-16', drop_users=True):
     """ Preprocess and save the train and test data as DataFrames. """
     train = load(os.path.join(data_dir, "train.csv"), nrows=nrows_train)
     test = load(os.path.join(data_dir, "test.csv"), nrows=nrows_test)
-
-    train, test = process(train, test)
-    train.to_csv(os.path.join(data_dir, "preprocessed_train.csv"), index=False, encoding="utf-8")
-    test.to_csv(os.path.join(data_dir, "preprocessed_test.csv"), index=False, encoding="utf-8")
+    x_train, y_train, x_test = create_train_test(train, test, start_x_train, end_x_train,
+                                                 start_y_train, end_y_train, start_x_test,
+                                                 end_x_test, drop_users=drop_users)
+    x_train, x_test = process_x(x_train, x_test)
+    y_train = process_y(y_train)
+    x_train.to_csv(os.path.join(data_dir, "preprocessed_x_train.csv"), index=False, encoding="utf-8")
+    y_train.to_csv(os.path.join(data_dir, "preprocessed_y_train.csv"), index=False, encoding="utf-8")
+    x_test.to_csv(os.path.join(data_dir, "preprocessed_x_test.csv"), index=False, encoding="utf-8")
 
 
 def keep_intersection_of_columns(train, test):
