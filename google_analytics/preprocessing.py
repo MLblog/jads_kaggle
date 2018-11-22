@@ -161,6 +161,39 @@ def preprocess_and_save(data_dir, nrows_train=None, nrows_test=None, start_x_tra
     x_test.to_csv(os.path.join(data_dir, "preprocessed_x_test.csv"), index=False, encoding="utf-8")
 
 
+def add_isVisiting(x, y=None, y_visit_col_name=None, is_testing_set=True):
+    """ Add a new boolean column that shows if there is at least one visit during the `y` period. 
+    So in the final case that means whether there is at least one visit during December 2018 and January 2019.
+
+    params
+    ------
+    x: pd.DataFrame either x_train or x_test.
+    y: pd.DataFrame of y_train.
+    y_visit_col_name: column name of the visits in y_train. In the final case the column name should be something like ["visits_12_2018","visits_1_2019"]
+    is_testing_set: whether x is from the testing set. If this button is False, the function requires both valid input of x and y.
+
+    return
+    ------
+    New x_train or x_test with an added column named 'IsVisiting'
+    """
+    if is_testing_set:
+        print("Adding a new column 'IsVisiting' to x_test...")
+        x["IsVisiting"] = 1
+
+    else:
+        if y == None:
+            print("A valid input of y_train is required.")
+        elif y_visit_col_name == None:
+            print("A valid input of column name of visits in y_train is required.")
+        else:
+            print("Adding a new column 'IsVisiting' to x_train...")
+            visit_ID = y[np.nansum(y[y_visit_col_name], axis=1) > 0]["fullVisitorId"] # the fullVisitorId of people who visit in y_train
+            x.loc[x["fullVisitorId"].isin(visit_ID), "IsVisiting"] = 1
+            x.loc[~x["fullVisitorId"].isin(visit_ID), "IsVisiting"] = 0
+
+    return x
+
+
 def keep_intersection_of_columns(train, test):
     """ Remove the columns from test and train set that are not in
         both datasets.

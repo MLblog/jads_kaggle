@@ -58,15 +58,47 @@ def get_gdp(path):
     return gdp_drop
 
 
-def add_gdp(df, gdp, input_type="raw", drop=True):
-    """Adds the `GDP` to the dataset. Assuming that both passed dataframes have a column named `country`.
+def get_hdi(path):
+    """Process the raw HDI (Human Development Index) originally
+    downloaded from `http://hdr.undp.org/en/composite/HDI`
+    Returns the mapping between country and HDI.
+
+    Parameters
+    ----------
+    path : str
+        Path to the raw file.
+
+    Returns
+    -------
+    pd.DataFrame
+        Mapping between country and HDI in 2017.
+     """
+
+    hdi = pd.read_excel(path, skiprows=6, usecols="B:C", header=None).rename({0:"country", 1:"HDI"}, axis=1)
+
+    # fix some mismatch of countries:
+    # The total mismatch is 7% of all data, fix the 8 countries below can reduce the mistach to 0.6%
+    hdi.loc[hdi["country"] == "Viet Nam", "country"] = "Vietnam"
+    hdi.loc[hdi.index[-1] + 1] = ["Taiwan", 0.907]
+    hdi.loc[hdi["country"] == "Russian Federation", "country"] = "Russia"
+    hdi.loc[hdi["country"] == "Korea (Republic of)", "country"] = "South Korea"
+    hdi.loc[hdi["country"] == "Hong Kong, China (SAR)", "country"] = "Hong Kong"
+    hdi.loc[hdi["country"] == "Venezuela (Bolivarian Republic of)", "country"] = "Venezuela"
+    hdi.loc[hdi["country"] == "Bosnia and Herzegovina", "country"] = "Bosnia & Herzegovina"
+    hdi.loc[hdi["country"] == "The former Yugoslav Republic of Macedonia", "country"] = "Macedonia (FYROM)"
+
+    return hdi
+
+
+def add_external_data(df, external_data, input_type="raw", drop=True):
+    """Adds the external data to the dataset. Assuming that both passed dataframes have a column named `country`.
 
     Parameters
     ----------
     df : pd.DataFrame
         Training of test dataframe including the `country` column.
-    gdp : pd.DataFrame
-        Mapping between `country` and `GDP`
+    external_data : pd.DataFrame
+        Mapping between `country` and `external_data`
     input_type : {"raw", "aggregated"}
         Whether the operation should run on the raw, or the aggregated dataset.
     drop : bool
@@ -106,7 +138,7 @@ def add_gdp(df, gdp, input_type="raw", drop=True):
         raise ValueError(msg)
 
     df["country"] = df["country"].fillna("Unknown").apply(stringify)
-    result = df.merge(gdp, on="country", how='left')
+    result = df.merge(external_data, on="country", how='left')
     if drop:
         result.drop("country", axis=1, inplace=True)
 
