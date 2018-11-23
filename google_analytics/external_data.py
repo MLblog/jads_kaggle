@@ -74,7 +74,7 @@ def get_hdi(path):
         Mapping between country and HDI in 2017.
      """
 
-    hdi = pd.read_excel(path, skiprows=6, usecols="B:C", header=None).rename({0:"country", 1:"HDI"}, axis=1)
+    hdi = pd.read_excel(path, skiprows=6, usecols="B:C", header=None).rename({0: "country", 1: "HDI"}, axis=1)
 
     # fix some mismatch of countries:
     # The total mismatch is 7% of all data, fix the 8 countries below can reduce the mistach to 0.6%
