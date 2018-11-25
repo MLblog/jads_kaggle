@@ -94,7 +94,7 @@ def aggregate(df):
 
     """
     # Long to wide pivot - one row per visitor.
-    dynamic_columns = ['transactionRevenue', 'visits', 'transactions', 'pageviews']
+    dynamic_columns = ['transactionRevenue', 'visits', 'transactions', 'pageviews', 'Avg. Session Duration', 'Bounce Rate', ]
     wide = pd.pivot_table(df, index='fullVisitorId', columns='date_temp', values=dynamic_columns)
 
     # Collapse multi-index.
@@ -127,6 +127,8 @@ def group_data(df):
             "pageviews": sum,
             "transactions": sum,
             "visits": sum,
+            "Avg. Session Duration": sum,
+            "Bounce Rate": sum,
             "transactionRevenue": sum,
             "visitStartTime": "first",
             "date": "first"
@@ -140,23 +142,40 @@ def group_data(df):
             return "{}_{}".format(s.month, s.year)
 
     df["date_temp"] = df["date"].apply(agg_date)
-
     print("First grouping, this will take a while")
     return df.groupby(["fullVisitorId", "date_temp"], as_index=False).agg(agg)
 
 
-def split_data(train, test, x_train_dates=('2016-08-01', '2017-11-30'), y_train_dates=('2017-12-01', '2018-01-31'),
-               x_test_dates=('2017-08-01', '2018-11-30'), selec_top_per=0.5, max_cat=10):
-    """A funtion to plit and preprocess the datasets
+def deal_static(train, test, selec_top_per=0.5, max_cat=10):
+    """This function merge the train and test and creates
+    OHE for every static variable
 
+    Parameters
+    ----------
+    train: DataFrame
+    test: DataFrame
+    selec_top_per: float
+        to select the top percentage per category
+    max_cat: int
+        the maximun number of categories
+    Returns
+    -------
+    DataFrame
+        train and test sets aggregated per user and date with the
+        static variables as OHE
     """
-    merged = pd.concat([train, test], sort=False)
+    def transform_date(x):
+        try:
+            return pd.datetime.strptime(str(x), '%Y-%m-%d')
+        except ValueError:
+            return x
+
+    merged = pd.concat([train, test], sort=False).reset_index(drop=True)
     merged['transactions'].fillna(0, inplace=True)
     merged['transactionRevenue'].fillna(0.0, inplace=True)
     # Create some features
-    merged['date'] = merged['date'].apply(lambda x: pd.datetime.strptime(str(x), '%Y-%m-%d'))
+    merged['date'] = merged['date'].apply(lambda x: transform_date(x))
     merged['weekday'] = merged['date'].apply(lambda x: x.weekday())
-
     # Aggregate the dataset
     merged = group_data(merged)
     # Reduce categories on static columns
@@ -164,13 +183,40 @@ def split_data(train, test, x_train_dates=('2016-08-01', '2017-11-30'), y_train_
     merged = reduce_categories(merged, OHE_reduce, selec_top_per, max_cat)
     # create OHE
     merged = one_hot_encode_categoricals(merged)
+    return merged
 
-    # Split in train and test
+
+def create_train_test(merged, x_train_dates=('2016-08-01', '2017-11-30'), y_train_dates=('2017-12-01', '2018-01-31'),
+                      x_test_dates=('2017-08-01', '2018-11-30'), y_test_dates=None):
+    """Splits the merged dataset on the defined time intervals.
+    """
+    def split_y(y):
+        """Split and create the Y values in the log form
+        """
+        y['target'] = y.groupby(['fullVisitorId'], as_index=False)['transactionRevenue'].sum()['transactionRevenue']
+        del y['transactionRevenue']
+        return y
+
+    def guarante_ids(x, y):
+        """To guarantee that the X and Y have the same fullVisitorId
+        """
+        names_x = x.columns.values
+        names_y = y.columns.values
+        merged = x.merge(y, on="fullVisitorId", how="inner")
+        x = merged[names_x]
+        y = merged[names_y]
+        return x, y
+
+    # Split train
     x_train = merged[(merged["date"] >= x_train_dates[0]) & (merged["date"] <= x_train_dates[1])]
+    # Split the Ys
     y_train = merged.loc[(merged["date"] >= y_train_dates[0]) & (merged["date"] <= y_train_dates[1]), ['transactionRevenue', 'fullVisitorId']]
-    y_train['target'] = y_train.groupby(['fullVisitorId'], as_index=False)['transactionRevenue'].sum()['transactionRevenue']
-    y_train['target'] = np.log(y_train['target'] + 1)
-    del y_train['transactionRevenue']
+    y_train = split_y(y_train)
+    if y_test_dates is not None:
+        y_test = merged.loc[(merged["date"] >= y_test_dates[0]) & (merged["date"] <= y_test_dates[1]), ['transactionRevenue', 'fullVisitorId']]
+        y_test = split_y(y_test)
+
+    # Split test
     x_test = merged[(merged["date"] >= x_test_dates[0]) & (merged["date"] <= x_test_dates[1])]
 
     # create dynamic features
@@ -188,13 +234,13 @@ def split_data(train, test, x_train_dates=('2016-08-01', '2017-11-30'), y_train_
     names = list(names_train.intersection(names_test))
 
     # Guarantee the same users
-    names_x = x_train.columns.values
-    names_y = y_train.columns.values
-    merged = x_train.merge(y_train, on="fullVisitorId", how="inner")
-    x_train = merged[names_x]
-    y_train = merged[names_y]
+    x_train, y_train = guarante_ids(x_train, y_train)
+    if y_test_dates is not None:
+        x_test, y_test = guarante_ids(x_train, y_train)
+    else:
+        y_test = None
 
-    return x_train[names], y_train, x_test[names]
+    return x_train[names], y_train, x_test[names], y_test
 
 
 def reduce_categories(df, ohe_reduce, selec_top_per, max_cat):
@@ -552,3 +598,67 @@ def ohe_explicit(df):
 
     df.drop("city", axis=1, inplace=True)
     return df
+
+
+def aggregate_only(df):
+    """Group and pivot the dataframe so that we have one row per visitor.
+    This row includes features of two types:
+      * Dynamic. These are repeated for each month and capture the time-series like behavior.
+                 Some examples are the revenue and visits per month, for every month in the dataset.
+      * Static. These exist once per user and correspond to relatively constant properties.
+                Examples include the person's country, OS and browser.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The original reduced dataframe - see the `reduce_df` function
+    Returns
+    -------
+    pd.DataFrame
+        The same dataframe grouped and pivoted, where each visitor is a single row.
+    """
+    df['transactions'].fillna(0, inplace=True)
+    df['transactionRevenue'].fillna(0.0, inplace=True)
+
+    def agg_date(s):
+        date = pd.datetime.strptime(s, '%Y-%m-%d')
+        return "{}_{}".format(date.month, date.year)
+
+    df["date"] = df["date"].apply(agg_date)
+
+    def most_frequent(x):
+        return x.value_counts().index[0]
+
+    agg = {
+        "operatingSystem": most_frequent,
+        "country": most_frequent,
+        "browser": most_frequent,
+        "pageviews": sum,
+        "transactions": sum,
+        "visits": sum,
+        "transactionRevenue": sum,
+        "visitStartTime": "first"
+    }
+
+    print("First grouping, this will take a while")
+    grouped = df.groupby(["fullVisitorId", "date"], as_index=False).agg(agg)
+
+    # Long to wide pivot - one row per visitor.
+    dynamic_columns = ['transactionRevenue', 'visits', 'transactions', 'pageviews']
+    wide = pd.pivot_table(grouped, index='fullVisitorId', columns='date', values=dynamic_columns)
+
+    # Collapse multi-index.
+    wide.columns = wide.columns.to_series().str.join('_')
+    wide.reset_index(inplace=True)
+
+    # Now let's also get the static columns.
+    static_columns = list(set(grouped.columns) - set(dynamic_columns) - {"date"})
+    static = grouped[static_columns]
+
+    # Regroup on visitor.
+    print("Regroup again to get the static fields - this will take a while")
+    for key in dynamic_columns:
+        agg.pop(key, None)
+    static_grouped = static.groupby("fullVisitorId", as_index=False).agg(agg)
+
+    # Merge dynamic and static features.
+    return wide.merge(static_grouped, on="fullVisitorId", how="inner")
