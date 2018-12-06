@@ -5,10 +5,13 @@ from functools import partial
 
 import sys
 
-from GPyOpt.methods import BayesianOptimization
+try:
+    from GPyOpt.methods import BayesianOptimization
+except ImportError:
+    print("Failed to import GPyOpt, either install it or refrain from using Bayesian Optimization")
 
 sys.path.append('..')
-from utils import timing # noqa
+from common.utils import timing # noqa
 
 TUNING_OUTPUT_DEFAULT = 'data/tuning.txt'
 

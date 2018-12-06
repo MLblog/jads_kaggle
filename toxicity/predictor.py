@@ -1,11 +1,13 @@
 from abc import abstractmethod
 import numpy as np
+import sys
 from collections import Counter
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedShuffleSplit
 from sklearn.base import BaseEstimator, ClassifierMixin
+from utils import TAGS
 
-from utils import timing, TAGS
+from common.utils import timing  # noqa
 
 TUNING_OUTPUT_DEFAULT = 'tuning.txt'
 RANDOM_STATE = 42  # Used for reproducible results

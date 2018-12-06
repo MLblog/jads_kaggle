@@ -5,7 +5,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 from gensim import corpora, models
 
-from utils import timing, save_sparse_csr, load_sparse_csr
+from common.utils import timing
+from toxicity.utils import save_sparse_csr, load_sparse_csr
 import os
 
 
@@ -24,13 +25,13 @@ def check_compatibility(f):
     return wrap
 
 
-def remove_numbers(train, test):
+def remove_numbers(train, test, text_column="comment_text"):
     """Removes numbers - who would have guessed!"""
     def remove_numbers_helper(s):
         return s.apply(lambda s: ''.join([i for i in s if not i.isdigit()]))
 
-    train["comment_text"] = remove_numbers_helper(train["comment_text"])
-    test["comment_text"] = remove_numbers_helper(test["comment_text"])
+    train[text_column] = remove_numbers_helper(train[text_column])
+    test[text_column] = remove_numbers_helper(test[text_column])
     return train, test
 
 
@@ -38,7 +39,7 @@ def remove_numbers(train, test):
 @timing
 def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
                       use_own_tfidf=False, force_compute=False, report_progress=False,
-                      data_dir='data/', **tfidf_params):
+                      data_dir='data/', text_column="comment_text", **tfidf_params):
 
     """Use topic modeling to create a dense matrix representation of the input text.
 
@@ -58,13 +59,13 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
     :param test: The test set as a pd.Dataframe including the free text column "comment_text".
     :param model: Dimensionality reduction model to be used, can be 'lsi', 'lda' for now (more might be added later).
     :param num_topics: Number of columns (features) in the output matrices.
-    :use_own_tfidf: If true, our own version of tfidf will be used with **tfidf_params passed to it
-    :force_compute: If True we will not even try to load but instead compute everything. Set it if you want to try
+    :param: use_own_tfidf: If true, our own version of tfidf will be used with **tfidf_params passed to it
+    :param: force_compute: If True we will not even try to load but instead compute everything. Set it if you want to try
                     different parameters.
-    :report_progress: If True, progress will be reported when each computationally expensive step is starting.
-    :data_dir: Path to the base data directory. Used to call this method from anywhere.
+    :param: report_progress: If True, progress will be reported when each computationally expensive step is starting.
+    :param: data_dir: Path to the base data directory. Used to call this method from anywhere.
                For example a notebook would provide `data_dir='../data'`
-    :**tfidf_params: Key-Value parameters passed to our own `tf_idf` implementation.
+    :param: **tfidf_params: Key-Value parameters passed to our own `tf_idf` implementation.
                      Only used if `use_own_tfidf` is set to True.
 
     Returns
@@ -83,8 +84,8 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
     if force_compute:
         progress("This is gonna take a while mate, grab a coffee/beer. Actually you might wanna take a walk as well. Or a nap :D")
 
-    train_text = train["comment_text"].tolist()
-    test_text = test["comment_text"].tolist()
+    train_text = train[text_column].tolist()
+    test_text = test[text_column].tolist()
 
     # Tokenize
     def safe_tokenize(comment):
@@ -171,7 +172,8 @@ def gensim_preprocess(train, test, model_type='lsi', num_topics=500,
 @check_compatibility
 @timing
 def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
-                            use_own_tfidf=True, data_dir='data/', save=False, **tfidf_params):
+                            use_own_tfidf=True, data_dir='data/', save=False,
+                            text_column="comment_text", **tfidf_params):
 
     """ Use Latent Semantic Analysis (LSA/LSI) to obtain a dense matrix representation of the input text.
 
@@ -196,8 +198,8 @@ def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
             print(msg)
 
     # create lists of comments/strings
-    train_text = train["comment_text"].tolist()
-    test_text = test["comment_text"].tolist()
+    train_text = train[text_column].tolist()
+    test_text = test[text_column].tolist()
     all_text = train_text + test_text
 
     # create the TF-IDF representation needed for dimensionality reduction.
@@ -236,15 +238,16 @@ def truncatedsvd_preprocess(train, test, num_topics=500, report_progress=False,
     x_test = pd.DataFrame(x_test)
 
     if save:
-        x_train.to_csv(data_dir+"train_"+str(int(num_topics))+".csv")
-        x_test.to_csv(data_dir+"test_"+str(int(num_topics))+".csv")
+        x_train.to_csv(data_dir + "train_" + str(int(num_topics)) + ".csv")
+        x_test.to_csv(data_dir + "test_" + str(int(num_topics)) + ".csv")
 
     progress("Dimensionality reduction completed.")
     return x_train, x_test
 
 
 @timing
-def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, stemming=True, lemmatization=False):
+def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False,
+           stemming=True, lemmatization=False, text_column="comment_text"):
     """
     Performs preprocessing of the data set and tokenization
     Each input is numpy array:
@@ -257,8 +260,8 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
     train: train set in sparce marix form
     test: test set in sparce matrix form
     """
-    train["comment_text"].fillna("unknown", inplace=True)
-    test["comment_text"].fillna("unknown", inplace=True)
+    train[text_column].fillna("unknown", inplace=True)
+    test[text_column].fillna("unknown", inplace=True)
 
     if remove_numbers_function:
         train, test = remove_numbers(train, test)
@@ -327,10 +330,10 @@ def tf_idf(train, test, params=None, remove_numbers_function=True, debug=False, 
         }
     vec = TfidfVectorizer(**params)
 
-    all_text = train["comment_text"].tolist() + test["comment_text"].tolist()
+    all_text = train[text_column].tolist() + test[text_column].tolist()
     whole = vec.fit_transform(all_text)
-    train = vec.transform(train["comment_text"])
-    test = vec.transform(test["comment_text"])
+    train = vec.transform(train[text_column])
+    test = vec.transform(test[text_column])
 
     if debug:
         print("Removing these tokens:\n{}".format(vec.stop_words_))
