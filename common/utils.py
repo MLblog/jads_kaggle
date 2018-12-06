@@ -1,5 +1,6 @@
 import time
 
+
 def timing(f):
     """
     Decorator to time a function call and print results.

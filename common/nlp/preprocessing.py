@@ -381,8 +381,8 @@ def get_sparse_matrix(train=None, test=None, params=None, remove_numbers_functio
         if os.path.exists(name_train) and os.path.exists(name_test):
             train, test = load_sparse_csr(name_train), load_sparse_csr(name_test)
         else:
-            raise ValueError("You asked to load the features but they were not found"
-                             + "at the specified location: \n{}\n{}".format(name_train, name_test))
+            msg = "You asked to load the features but they were not found at the specified location: \n{}\n{}"
+            raise ValueError(msg.format(name_train, name_test))
     else:
         print('Computing the sparse matrixes, this will take a while...!')
         train, test, _ = tf_idf(train, test, params, remove_numbers_function, debug, stemming, lemmatization)
