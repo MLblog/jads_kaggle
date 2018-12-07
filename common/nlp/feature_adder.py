@@ -9,15 +9,14 @@ from textblob import TextBlob
 nltk.download('stopwords')
 eng_stopwords = set(stopwords.words("english"))
 
-# Input dataframes are assumed to contain plain text in this column
-TEXT_COLUMN = "comment_text"
-
 
 class FeatureAdder(object):
     def __init__(self, data_dir="data", upper_case=False, word_count=False, unique_words_count=False,
-                 letter_count=False, punctuation_count=False, little_case=False,
-                 stopwords=False, question_or_exclamation=False, number_bad_words=False, sentiment_analysis=False):
+                 letter_count=False, punctuation_count=False, little_case=False, stopwords=False,
+                 question_or_exclamation=False, number_bad_words=False, sentiment_analysis=False,
+                 text_column="comment_text"):
 
+        self.text_column = text_column
         self.data_dir = data_dir
         self.features = {
             self._upper: upper_case,
@@ -38,7 +37,7 @@ class FeatureAdder(object):
         evaluate the sentiment of a text.
         Parameters
         -------------------------
-        df: Pandas Dataframe. Assumed to contain text in a column named `TEXT_COLUMN`
+        df: Pandas Dataframe. Assumed to contain text in a column named `self.text_column`
         Returns
         --------------------------
         df: Data frame with the polarity and sbjectivity score
@@ -49,8 +48,8 @@ class FeatureAdder(object):
         def subjectivity_score(x):
             return TextBlob(x).sentiment.subjectivity
 
-        df['polarity_score'] = df[TEXT_COLUMN].apply(lambda x: polarity_score(x))
-        df['subjectivity_score'] = df[TEXT_COLUMN].apply(lambda x: subjectivity_score(x))
+        df['polarity_score'] = df[self.text_column].apply(lambda x: polarity_score(x))
+        df['subjectivity_score'] = df[self.text_column].apply(lambda x: subjectivity_score(x))
         return df
 
     def set_path(self, data_dir):
@@ -62,7 +61,7 @@ class FeatureAdder(object):
         Source: https://www.freewebheaders.com/full-list-of-bad-words-banned-by-google/
         Parameters
         -------------------------
-        df: Pandas Dataframe. Assumed to contain text in a column named `TEXT_COLUMN`
+        df: Pandas Dataframe. Assumed to contain text in a column named `self.text_column`
         Returns
         --------------------------
         df: Data frame with the number of the bad words according to the google dictionary.
@@ -94,7 +93,7 @@ class FeatureAdder(object):
             return None
 
         badwords = union_sets(badwords_1, badwords_2)
-        df["count_bad_words"] = df[TEXT_COLUMN].apply(count_badwords)
+        df["count_bad_words"] = df[self.text_column].apply(count_badwords)
         return df
 
     def _upper(self, df):
@@ -103,13 +102,13 @@ class FeatureAdder(object):
 
         Parameters
         -------------------------
-        df: pd.Dataframe. Assumed to contain text in a column named `TEXT_COLUMN`
+        df: pd.Dataframe. Assumed to contain text in a column named `self.text_column`
 
         Returns
         --------------------------
         pd.Dataframe with the number of the capitalized words as an extra feature.
         """
-        df["count_words_upper"] = df[TEXT_COLUMN].apply(lambda x: len([w for w in str(x).split() if w.isupper()]))
+        df["count_words_upper"] = df[self.text_column].apply(lambda x: len([w for w in str(x).split() if w.isupper()]))
         return df
 
     def _count_words(self, df):
@@ -118,13 +117,13 @@ class FeatureAdder(object):
 
         Parameters
         -------------------------
-        df: pd.Dataframe, assumed to contain text in a column named `TEXT_COLUMN`
+        df: pd.Dataframe, assumed to contain text in a column named `self.text_column`
 
         Returns
         --------------------------
         pd.Dataframe with the number of words as an extra feature.
         """
-        df['count_word'] = df[TEXT_COLUMN].apply(lambda x: len(str(x).split()))
+        df['count_word'] = df[self.text_column].apply(lambda x: len(str(x).split()))
         return df
 
     def _unique_words(self, df):
@@ -133,13 +132,13 @@ class FeatureAdder(object):
 
         Parameters
         -------------------------
-        df: pd.Dataframe, assumed to contain text in a column named `TEXT_COLUMN`
+        df: pd.Dataframe, assumed to contain text in a column named `self.text_column`
 
         Returns
         --------------------------
         pd.Dataframe with the number of the unique words as an extra feature.
         """
-        df['count_unique_word'] = df[TEXT_COLUMN].apply(lambda x: len(set(str(x).split())))
+        df['count_unique_word'] = df[self.text_column].apply(lambda x: len(set(str(x).split())))
         return df
 
     def _count_letters(self, df):
@@ -148,13 +147,13 @@ class FeatureAdder(object):
 
         Parameters
         -------------------------
-        df: pd.Dataframe, assumed to contain text in a column named `TEXT_COLUMN`
+        df: pd.Dataframe, assumed to contain text in a column named `self.text_column`
 
         Returns
         --------------------------
         pd.Dataframe with the aggregated number of the characters as an extra feature.
         """
-        df['count_letters'] = df[TEXT_COLUMN].apply(lambda x: len(str(x)))
+        df['count_letters'] = df[self.text_column].apply(lambda x: len(str(x)))
         return df
 
     def _count_punctuation(self, df):
@@ -163,13 +162,13 @@ class FeatureAdder(object):
 
         Parameters
         -------------------------
-        df: pd.Dataframe, assumed to contain text in a column named `TEXT_COLUMN`
+        df: pd.Dataframe, assumed to contain text in a column named `self.text_column`
 
         Returns
         --------------------------
         pd.Dataframe with the number of the puncutation symbols as an extra feature.
         """
-        df["count_punctuations"] = df[TEXT_COLUMN].apply(
+        df["count_punctuations"] = df[self.text_column].apply(
             lambda x: len([c for c in str(x) if c in string.punctuation]))
         return df
 
@@ -179,13 +178,13 @@ class FeatureAdder(object):
 
         Parameters
         -------------------------
-        df: pd.Dataframe, assumed to contain text in a column named `TEXT_COLUMN`
+        df: pd.Dataframe, assumed to contain text in a column named `self.text_column`
 
         Returns
         --------------------------
         pd.Dataframe with the number of the not capitalized words as an extra feature.
         """
-        df["count_words_title"] = df[TEXT_COLUMN].apply(lambda x: len([w for w in str(x).split() if w.islower()]))
+        df["count_words_title"] = df[self.text_column].apply(lambda x: len([w for w in str(x).split() if w.islower()]))
         return df
 
     def _count_stopwords(self, df):
@@ -194,13 +193,13 @@ class FeatureAdder(object):
 
         Parameters
         -------------------------
-        df: pd.Dataframe, assumed to contain text in a column named `TEXT_COLUMN`
+        df: pd.Dataframe, assumed to contain text in a column named `self.text_column`
 
         Returns
         --------------------------
         pd.Dataframe with the number of the stop words (like 'then', 'to', 'a' etc) as an extra feature.
         """
-        df["count_stopwords"] = df[TEXT_COLUMN].apply(
+        df["count_stopwords"] = df[self.text_column].apply(
             lambda x: len([w for w in str(x).lower().split() if w in eng_stopwords]))
         return df
 
@@ -210,14 +209,14 @@ class FeatureAdder(object):
 
         Parameters
         -------------------------
-        df: pd.Dataframe, assumed to contain text in a column named `TEXT_COLUMN`
+        df: pd.Dataframe, assumed to contain text in a column named `self.text_column`
 
         Returns
         --------------------------
         pd.Dataframe with the number of the question or exclamation marks as an extra feature.
         """
-        df['question_mark'] = df[TEXT_COLUMN].str.count('?')
-        df['exclamation_mark'] = df[TEXT_COLUMN].str.count('!')
+        df['question_mark'] = df[self.text_column].str.count('?')
+        df['exclamation_mark'] = df[self.text_column].str.count('!')
         return df
 
     @timing
@@ -271,8 +270,8 @@ class FeatureAdder(object):
                 if condition:
                     method(train), method(test)
 
-            train.drop(TEXT_COLUMN, axis=1, inplace=True)
-            test.drop(TEXT_COLUMN, axis=1, inplace=True)
+            train.drop(self.text_column, axis=1, inplace=True)
+            test.drop(self.text_column, axis=1, inplace=True)
 
         if save:
             print('Saving train file as {}'.format(name_train))
