@@ -7,7 +7,7 @@ try:
     from xgboost import XGBClassifier
 except ImportError:
     print("XGBoost not imported.")
-from predictor import Predictor
+from toxicity.predictor import Predictor
 
 
 class LogisticPredictor(Predictor):
