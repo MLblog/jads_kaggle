@@ -3,9 +3,9 @@ import os
 from os import listdir
 from os.path import isfile, join
 from itertools import compress
-from linear_predictor import XGBPredictor
-from tuning import bayesian_optimization
-from utils import create_submission
+from toxicity.linear_predictor import XGBPredictor
+from toxicity.tuning import bayesian_optimization
+from toxicity.utils import create_submission
 
 TAGS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 
