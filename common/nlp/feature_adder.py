@@ -14,9 +14,10 @@ class FeatureAdder(object):
     def __init__(self, data_dir="data", upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False, stopwords=False,
                  question_or_exclamation=False, number_bad_words=False, sentiment_analysis=False,
-                 text_column="comment_text"):
+                 text_column="comment_text", badwords = None):
 
         self.text_column = text_column
+        self.badwords = badwords
         self.data_dir = data_dir
         self.features = {
             self._upper: upper_case,
@@ -81,20 +82,26 @@ class FeatureAdder(object):
                 # Bad comment, probably NaN
                 return 0
 
-        badwords_1_path = os.path.join(self.data_dir, "badwords", "google_bad_words.csv")
-        badwords_2_path = os.path.join(self.data_dir, "badwords", "bad_words.csv")
-
-        try:
-            badwords_1 = pd.read_csv(badwords_1_path, 'utf-8', engine="python")
-            badwords_2 = pd.read_csv(badwords_2_path, sep=',')
-        except FileNotFoundError:
-            print("Could not find the badwords folder at {}\n"
-                  "Please provide the data root path using the `set_path` method.".format(self.data_dir))
-            return None
-
-        badwords = union_sets(badwords_1, badwords_2)
+        # If the list of badwords is not given, then external data is used.
+        if self.badwords is None:
+            badwords_1_path = os.path.join(self.data_dir, "badwords", "google_bad_words.csv")
+            badwords_2_path = os.path.join(self.data_dir, "badwords", "bad_words.csv")
+    
+            try:
+                badwords_1 = pd.read_csv(badwords_1_path, 'utf-8', engine="python")
+                badwords_2 = pd.read_csv(badwords_2_path, sep=',')
+            except FileNotFoundError:
+                print("Could not find the badwords folder at {}\n"
+                      "Please provide the data root path using the `set_path` method.".format(self.data_dir))
+                return None
+    
+            badwords = union_sets(badwords_1, badwords_2)
+        else:
+            badwords = self.badwords
+        
         df["count_bad_words"] = df[self.text_column].apply(count_badwords)
         return df
+
 
     def _upper(self, df):
         """
@@ -215,8 +222,8 @@ class FeatureAdder(object):
         --------------------------
         pd.Dataframe with the number of the question or exclamation marks as an extra feature.
         """
-        df['question_mark'] = df[self.text_column].str.count('?')
-        df['exclamation_mark'] = df[self.text_column].str.count('!')
+        df['question_mark'] = df[self.text_column].str.count('\?')
+        df['exclamation_mark'] = df[self.text_column].str.count('\!')
         return df
 
     @timing
