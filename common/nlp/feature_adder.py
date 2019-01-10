@@ -221,8 +221,8 @@ class FeatureAdder(object):
         --------------------------
         pd.Dataframe with the number of the question or exclamation marks as an extra feature.
         """
-        df['question_mark'] = df[self.text_column].str.count('\?')
-        df['exclamation_mark'] = df[self.text_column].str.count('\!')
+        df['question_mark'] = df[self.text_column].str.count('\\?')
+        df['exclamation_mark'] = df[self.text_column].str.count('\\!')
         return df
 
     @timing
