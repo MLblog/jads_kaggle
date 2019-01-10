@@ -14,7 +14,7 @@ class FeatureAdder(object):
     def __init__(self, data_dir="data", upper_case=False, word_count=False, unique_words_count=False,
                  letter_count=False, punctuation_count=False, little_case=False, stopwords=False,
                  question_or_exclamation=False, number_bad_words=False, sentiment_analysis=False,
-                 text_column="comment_text", badwords = None):
+                 text_column="comment_text", badwords=None):
 
         self.text_column = text_column
         self.badwords = badwords
@@ -86,7 +86,7 @@ class FeatureAdder(object):
         if self.badwords is None:
             badwords_1_path = os.path.join(self.data_dir, "badwords", "google_bad_words.csv")
             badwords_2_path = os.path.join(self.data_dir, "badwords", "bad_words.csv")
-    
+
             try:
                 badwords_1 = pd.read_csv(badwords_1_path, 'utf-8', engine="python")
                 badwords_2 = pd.read_csv(badwords_2_path, sep=',')
@@ -94,14 +94,13 @@ class FeatureAdder(object):
                 print("Could not find the badwords folder at {}\n"
                       "Please provide the data root path using the `set_path` method.".format(self.data_dir))
                 return None
-    
+
             badwords = union_sets(badwords_1, badwords_2)
         else:
             badwords = self.badwords
-        
+
         df["count_bad_words"] = df[self.text_column].apply(count_badwords)
         return df
-
 
     def _upper(self, df):
         """
