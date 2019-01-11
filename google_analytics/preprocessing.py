@@ -164,10 +164,12 @@ def preprocess_and_save(data_dir, nrows_train=None, nrows_test=None, start_x_tra
 def keep_intersection_of_columns(train, test):
     """ Remove the columns from test and train set that are not in
         both datasets.
+
     params
     ------
     train: pd.DataFrame containing the train set.
     test: pd.DataFrame containing the test set.
+
     return
     ------
     train and test where train.columns==test.columns by
