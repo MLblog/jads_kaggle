@@ -22,7 +22,9 @@ WORD_MAP = {"don't": "do not",
             "hasn't": "has not",
             "hadn't": "had not",
             "it's": "it is",
-            "that's": "that is"}
+            "that's": "that is",
+            "how's": "how is",
+            "what's": "what is"}
 
 
 WORD_MAP_NO_PUNCT = {"dont": "do not",
@@ -42,10 +44,18 @@ WORD_MAP_NO_PUNCT = {"dont": "do not",
                      "weve": "we have",
                      "hasnt": "has not",
                      "hadnt": "had not",
-                     "thats": "that is"}
+                     "thats": "that is",
+                     "hows": "how is",
+                     "whats": "what is"}
 
+# List of punctuations (obtained from a kaggle kernel)
+PUNCTS_LIST = [',', '.', '"', ':', ')', '(', '-', '!', '?', '|', ';', "'", '$', '&', '/', '[', ']', '>', '%', '=', '#', '*', '+', '\\', '•',  '~', '@', '£',
+ '·', '_', '{', '}', '©', '^', '®', '`',  '<', '→', '°', '€', '™', '›',  '♥', '←', '×', '§', '″', '′', 'Â', '█', '½', 'à', '…',
+ '“', '★', '”', '–', '●', 'â', '►', '−', '¢', '²', '¬', '░', '¶', '↑', '±', '¿', '▾', '═', '¦', '║', '―', '¥', '▓', '—', '‹', '─',
+ '▒', '：', '¼', '⊕', '▼', '▪', '†', '■', '’', '▀', '¨', '▄', '♫', '☆', 'é', '¯', '♦', '¤', '▲', 'è', '¸', '¾', 'Ã', '⋅', '‘', '∞',
+ '∙', '）', '↓', '、', '│', '（', '»', '，', '♪', '╩', '╚', '³', '・', '╦', '╣', '╔', '╗', '▬', '❤', 'ï', 'Ø', '¹', '≤', '‡', '√', ]
 
-def preprocess_text_for_DL(*datasets, text_col="question_text", word_map=WORD_MAP):
+def preprocess_text_for_DL(*datasets, text_col="question_text", word_map=WORD_MAP, puncts=PUNCTS_LIST, puncts_ignore="", puncts_retain=""):
     """Preprocess strings for use in DL models.
 
     Performs the following tasks:
@@ -62,6 +72,12 @@ def preprocess_text_for_DL(*datasets, text_col="question_text", word_map=WORD_MA
     word_map: dict, optional (default: common.nlp.sequence_preprocessing.WORD_MAP)
         A mapping of words to other words. If not None, the keys are replaced
         with their values. Intended use is to perform step 3 above.
+    puncts: list or string (default: common.nlp.sequence_preprocessing.PUNCTS_LIST)
+        List of punctions to remove from text
+    punct_retain: list or string (default: "")
+        List of punctions to retain in text
+    puncts_ignore: list or string (default: "")
+        List of punctions to ignore (that is, replace by " ")
 
     Notes
     -----
@@ -70,15 +86,39 @@ def preprocess_text_for_DL(*datasets, text_col="question_text", word_map=WORD_MA
     of {"Wont": "Will not}, etc.
     - The method takes an arbitrary number of datasets, so it's possible to preprocess just train or test
     or both. Just make sure all datasets have the same column name for the text column.
+    - Preprocessing steps: https://www.kaggle.com/christofhenkel/how-to-preprocessing-when-using-embeddings
 
     Returns
     -------
     new_datasets: tuple of pd.DataFrames
         The datasets with cleaned text columns.
     """
-    def clean_string(text, character_map):
-        """Cleans a single string, i.e., removes punctuation and makes it lower case."""
-        return text.translate(character_map).lower()
+    def clean_string(text):
+        """Cleans a single string, i.e., removes certain punctuation,
+        retains some and ignores some and makes it lower case."""
+
+        # Remove, retain or ignore(replace by space) punctuations
+        text = str(text)
+        for punct in puncts_ignore:
+            text = text.replace(punct, ' ')
+        for punct in puncts_retain:
+            text = text.replace(punct, f' {punct} ')
+        for punct in puncts:
+            text = text.replace(punct, '')
+
+        # Take care of numbers such that they are recognized by embedding
+        text = re.sub('[0-9]{5,}', '#####', text)
+        text = re.sub('[0-9]{4}', '####', text)
+        text = re.sub('[0-9]{3}', '###', text)
+        text = re.sub('[0-9]{2}', '##', text)
+
+        # remove multiple spaces, if any
+        text = re.sub(' +',' ',text)
+
+        return text.lower()
+
+    # punctions to remove from string (puncts=puncts-puncts_ignore-puncts_retain)
+    puncts = [i for i in puncts if i not in puncts_ignore and i not in puncts_retain]
 
     # make translation of punctuation characters
     punctuation_map = str.maketrans('', '', string.punctuation)
@@ -96,6 +136,6 @@ def preprocess_text_for_DL(*datasets, text_col="question_text", word_map=WORD_MA
             data[text_col] = data[text_col].str.replace(regexp, lambda x: word_map[x.group(0)])
 
         # remove punctuation
-        data[text_col] = data[text_col].apply(lambda x: clean_string(x, character_map=punctuation_map))
+        data[text_col] = data[text_col].apply(lambda x: clean_string(x))
 
     return new_datasets[0] if len(new_datasets) == 1 else new_datasets
