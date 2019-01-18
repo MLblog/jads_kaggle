@@ -1,5 +1,5 @@
 import re
-import string
+# import string
 import copy
 
 
@@ -49,13 +49,22 @@ WORD_MAP_NO_PUNCT = {"dont": "do not",
                      "whats": "what is"}
 
 # List of punctuations (obtained from a kaggle kernel)
-PUNCTS_LIST = [',', '.', '"', ':', ')', '(', '-', '!', '?', '|', ';', "'", '$', '&', '/', '[', ']', '>', '%', '=', '#', '*', '+', '\\', '•',  '~', '@', '£',
- '·', '_', '{', '}', '©', '^', '®', '`',  '<', '→', '°', '€', '™', '›',  '♥', '←', '×', '§', '″', '′', 'Â', '█', '½', 'à', '…',
- '“', '★', '”', '–', '●', 'â', '►', '−', '¢', '²', '¬', '░', '¶', '↑', '±', '¿', '▾', '═', '¦', '║', '―', '¥', '▓', '—', '‹', '─',
- '▒', '：', '¼', '⊕', '▼', '▪', '†', '■', '’', '▀', '¨', '▄', '♫', '☆', 'é', '¯', '♦', '¤', '▲', 'è', '¸', '¾', 'Ã', '⋅', '‘', '∞',
- '∙', '）', '↓', '、', '│', '（', '»', '，', '♪', '╩', '╚', '³', '・', '╦', '╣', '╔', '╗', '▬', '❤', 'ï', 'Ø', '¹', '≤', '‡', '√', ]
+PUNCTS_LIST = [',', '.', '"', ':', ')', '(', '-', '!', '?', '|', ';', "'", '$',
+               '&', '/', '[', ']', '>', '%', '=', '#', '*', '+', '\\', '•',
+               '~', '@', '£', '·', '_', '{', '}', '©', '^', '®', '`',  '<',
+               '→', '°', '€', '™', '›',  '♥', '←', '×', '§', '″', '′', 'Â',
+               '█', '½', 'à', '…', '“', '★', '”', '–', '●', 'â', '►', '−',
+               '¢', '²', '¬', '░', '¶', '↑', '±', '¿', '▾', '═', '¦', '║',
+               '―', '¥', '▓', '—', '‹', '─', '▒', '：', '¼', '⊕', '▼', '▪',
+               '†', '■', '’', '▀', '¨', '▄', '♫', '☆', 'é', '¯', '♦', '¤',
+               '▲', 'è', '¸', '¾', 'Ã', '⋅', '‘', '∞',  '∙', '）', '↓', '、',
+               '│', '（', '»', '，', '♪', '╩', '╚', '³', '・', '╦', '╣', '╔',
+               '╗', '▬', '❤', 'ï', 'Ø', '¹', '≤', '‡', '√', ]
 
-def preprocess_text_for_DL(*datasets, text_col="question_text", word_map=WORD_MAP, puncts=PUNCTS_LIST, puncts_ignore="", puncts_retain=""):
+
+def preprocess_text_for_dl(*datasets, text_col="question_text",
+                           word_map=WORD_MAP, puncts=PUNCTS_LIST,
+                           puncts_ignore="", puncts_retain=""):
     """Preprocess strings for use in DL models.
 
     Performs the following tasks:
@@ -113,7 +122,7 @@ def preprocess_text_for_DL(*datasets, text_col="question_text", word_map=WORD_MA
         text = re.sub('[0-9]{2}', '##', text)
 
         # remove multiple spaces, if any
-        text = re.sub(' +',' ',text)
+        text = re.sub(' +', ' ', text)
 
         return text.lower()
 
@@ -121,7 +130,7 @@ def preprocess_text_for_DL(*datasets, text_col="question_text", word_map=WORD_MA
     puncts = [i for i in puncts if i not in puncts_ignore and i not in puncts_retain]
 
     # make translation of punctuation characters
-    punctuation_map = str.maketrans('', '', string.punctuation)
+    # punctuation_map = str.maketrans('', '', string.punctuation)
 
     # copy to keep the original data as it is
     new_datasets = copy.deepcopy(datasets)
