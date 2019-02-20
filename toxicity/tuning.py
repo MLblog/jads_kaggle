@@ -42,10 +42,10 @@ def eval_permutation(params, predictor_cls, train_x, train_ys, method='split', n
 def write_results(write_to, scores, predictor_cls):
     """ Writes experiment results to specified file """
     with open(write_to, "a") as f:
-            f.write("------------------------------------------------\n")
-            f.write("Model:\t{}\n".format(predictor_cls.name))
-            for params, score in scores:
-                f.write("Score:\t{}\nparams:\t{}\n\n".format(score, dict(params)))
+        f.write("------------------------------------------------\n")
+        f.write("Model:\t{}\n".format(predictor_cls.name))
+        for params, score in scores:
+            f.write("Score:\t{}\nparams:\t{}\n\n".format(score, dict(params)))
 
 
 def bayesian_optimization(predictor_cls, train_x, train_ys, params, max_iter, max_time=600, model_type='GP', acquisition_type='EI',
