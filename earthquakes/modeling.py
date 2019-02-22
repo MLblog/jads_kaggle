@@ -6,7 +6,6 @@ import sys
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_error
 
-sys.path.append('..')
 from common.utils import progress
 from earthquakes.engineering import create_feature_dataset
 
