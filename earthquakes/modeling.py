@@ -125,7 +125,7 @@ def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_fa
                 new_predictions = predict_on_test(model, feature_computer, data_dir=data_dir)
                 test_predictions[ycol + "_{}".format(i)] = new_predictions[ycol].copy()
         progress("Predictions on test set made.")
-                
+
     if predict_test:
         return scores, test_predictions
     else:
