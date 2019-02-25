@@ -135,11 +135,11 @@ def create_feature_dataset(data, feature_computer, xcol="acoustic_data", ycol="t
         x, y = next(data_gen)
         new_data.iloc[i, :] = feature_computer.compute(x)
         if stft:
-            _, _, Zxx = signal.stft(x)
-            x_stft = np.sum(np.abs(Zxx), axis = 0)
+            _, _, zxx = signal.stft(x)
+            x_stft = np.sum(np.abs(zxx), axis=0)
             new_data_stft.iloc[i, :] = feature_computer.compute(x_stft)
         targets[i] = y
-    
+
     if stft:
         new_data = pd.concat([new_data, new_data_stft], axis=1)
     new_data[ycol] = targets

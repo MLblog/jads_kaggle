@@ -164,7 +164,7 @@ def predict_on_test(model, feature_computer, ycol="time_to_failure", data_dir=".
     sample_submission = pd.read_csv(os.path.join(data_dir, "sample_submission.csv"), index_col="seg_id")
     x_test = pd.DataFrame(columns=feature_computer.feature_names, dtype=np.float64, index=sample_submission.index)
     if stft:
-        x_test_stft= pd.DataFrame(columns=[x + "_stft" for x in feature_computer.feature_names],
+        x_test_stft= pd.DataFrame(columns=[x + "_stft" for x in feature_computer.feature_names],  # noqa
                                   dtype=np.float64,
                                   index=sample_submission.index)
 
@@ -176,10 +176,10 @@ def predict_on_test(model, feature_computer, ycol="time_to_failure", data_dir=".
         segment = pd.read_csv(os.path.join(data_dir, "test", seg_id + ".csv"))
         x_test.loc[seg_id, :] = feature_computer.compute(np.array(segment))
         if stft:
-            _, _, Zxx = signal.stft([item for sublist in np.array(segment) for item in sublist])
-            x_stft = np.sum(np.abs(Zxx), axis = 0)
+            _, _, zxx = signal.stft([item for sublist in np.array(segment) for item in sublist])
+            x_stft = np.sum(np.abs(zxx), axis=0)
             x_test_stft.loc[seg_id, :] = feature_computer.compute(x_stft)
-    
+
     if stft:
         x_test = pd.concat([x_test, x_test_stft], axis=1)
 
