@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from scipy import signal
+
 
 def sequence_generator(data, xcol="acoustic_data", ycol="time_to_failure", size=150000):
     """Generator that extracts segments of the signal from the data.
@@ -97,7 +99,7 @@ class FeatureComputer():
         return result
 
 
-def create_feature_dataset(data, feature_computer, xcol="acoustic_data", ycol="time_to_failure", n_samples=100):
+def create_feature_dataset(data, feature_computer, xcol="acoustic_data", ycol="time_to_failure", n_samples=100, stft=True):
     """Samples sequences from the data, computes features for each sequence, and stores the result
     in a new dataframe.
 
@@ -116,6 +118,8 @@ def create_feature_dataset(data, feature_computer, xcol="acoustic_data", ycol="t
         The column referring to the target value.
     n_samples: int, optional (default: 100),
         The number of sequences to process and return.
+    stft: bool, optional (default: True),
+        To calculate the Short Time Fourier Transform
 
     Returns
     -------
@@ -123,13 +127,20 @@ def create_feature_dataset(data, feature_computer, xcol="acoustic_data", ycol="t
         A new dataframe of shape (n_samples, number of features) with the new features per sequence.
     """
     new_data = pd.DataFrame({feature: np.zeros(n_samples) for feature in feature_computer.feature_names})
+    if stft:
+        new_data_stft = pd.DataFrame({feature + '_stft': np.zeros(n_samples) for feature in feature_computer.feature_names})
     targets = np.zeros(n_samples)
     data_gen = sequence_generator(data, xcol=xcol, ycol=ycol, size=150000)
-
     for i in range(n_samples):
         x, y = next(data_gen)
         new_data.iloc[i, :] = feature_computer.compute(x)
+        if stft:
+            _, _, zxx = signal.stft(x)
+            x_stft = np.sum(np.abs(zxx), axis=0)
+            new_data_stft.iloc[i, :] = feature_computer.compute(x_stft)
         targets[i] = y
 
+    if stft:
+        new_data = pd.concat([new_data, new_data_stft], axis=1)
     new_data[ycol] = targets
     return new_data
