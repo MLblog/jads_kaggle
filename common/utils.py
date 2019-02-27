@@ -16,3 +16,9 @@ def timing(f):
         return ret
 
     return wrap
+
+
+def progress(text, verbose=True, same_line=False, newline_end=True):
+    if verbose:
+        print("{}[{}] {}".format("\r" if same_line else "", time.strftime("%Y-%m-%d %H:%M:%S"),
+                                 text), end="\n" if newline_end else "")
