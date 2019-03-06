@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from scipy import signal
+from scipy import signal, stats
+from sklearn.linear_model import LinearRegression
+from obspy.signal.trigger import classic_sta_lta
 
 
 def sequence_generator(data, xcol="acoustic_data", ycol="time_to_failure", size=150000):
@@ -67,11 +69,16 @@ class FeatureComputer():
     In order to see which value in the result refers to which feature, see 'self.feature_names'.
     """
     feats = ["minimum", "maximum", "mean", "median", "std", "abs_min", "abs_max", "abs_mean",
-             "abs_median", "abs_std", "mean_abs_delta", "mean_rel_delta"]
+             "abs_median", "abs_std", "mean_abs_delta", "mean_rel_delta", "max_to_min", "count_abs_big",
+             "count_abs_ext_big", "abs_trend", "mad", "skew", "abs_skew", "kurtosis", "abs_kurtosis",
+             "hilbert", "hann"]
 
     def __init__(self, minimum=True, maximum=True, mean=True, median=True, std=True, quantiles=None,
                  abs_min=True, abs_max=True, abs_mean=True, abs_median=True, abs_std=True, abs_quantiles=None,
-                 mean_abs_delta=True, mean_rel_delta=True, window=None, array_length=150000):
+                 mean_abs_delta=True, mean_rel_delta=True, max_to_min=True, count_abs_big=True,
+                 count_abs_ext_big=True, abs_trend=True, mad=True, skew=True, abs_skew=True, kurtosis=True,
+                 abs_kurtosis=True, hilbert=True, hann=True, STALTA=True, exp_mov_ave=True, window=None,
+                 array_length=150000):
 
         self.minimum = minimum
         self.maximum = maximum
@@ -85,6 +92,19 @@ class FeatureComputer():
         self.abs_std = abs_std
         self.mean_abs_delta = mean_abs_delta
         self.mean_rel_delta = mean_rel_delta
+        self.max_to_min = max_to_min
+        self.count_abs_big = count_abs_big
+        self.count_abs_ext_big = count_abs_ext_big
+        self.abs_trend = abs_trend
+        self.mad = mad
+        self.skew = skew
+        self.abs_skew = abs_skew
+        self.kurtosis = kurtosis
+        self.abs_kurtosis = abs_kurtosis
+        self.hilbert = hilbert
+        self.hann = hann
+        self.STALTA = STALTA
+        self.exp_mov_ave = exp_mov_ave
 
         if quantiles is None:
             self.quantiles = []
@@ -98,6 +118,20 @@ class FeatureComputer():
 
         self.window = window
 
+        if self.STALTA is True:
+            self.STALTA_options = [(50, 1000), (100, 1500), (500, 5000), (1000, 10000), (5000, 15000), (10000, 25000)]
+            if self.window:
+                self.STALTA_options_window = [(50, 1000), (100, 1500), (500, 5000), (1000, 5000)]
+        else:
+            self.STALTA_options = []
+
+        if self.exp_mov_ave is True:
+            self.exp_mov_ave_options = [300, 3000, 10000]
+            if self.window:
+                self.exp_mov_ave_options_window = [300, 1000, 2000]
+        else:
+            self.exp_mov_ave_options = []
+
         if self.window is not None:
             self.indicators = np.array(([np.ones(window)*i for i in range(int(np.ceil(array_length/window)))]),
                                        dtype=int).flatten()
@@ -107,29 +141,33 @@ class FeatureComputer():
         self.feature_names = self._infer_names()
         self.n_features = len(self.feature_names)
 
-        if self.window is not None:
-            self.n_features_per_window = int(self.n_features / (len(np.unique(self.indicators)) + 1))
-            self.result_template = np.zeros(self.n_features_per_window)
-        else:
-            self.result_template = np.zeros(self.n_features)
-
     def _infer_names(self):
         """Infer the names of the features that will be calculated."""
         quantile_names = [str(q) + "-quantile" for q in self.quantiles]
         abs_quantile_names = [str(q) + "-abs_quantile" for q in self.abs_quantiles]
+        STALTA_names = ["all_STALTA-" + str(q[0]) + "-" + str(q[1]) for q in self.STALTA_options]
+        exp_mov_ave_names = ["all_exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options]
+        if self.window is not None:
+            STALTA_names_window = ["STALTA-" + str(q[0]) + "-" + str(q[1]) for q in self.STALTA_options_window]
+            exp_mov_ave_names_window = ["exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options_window]
         names = np.array(self.feats)[[self.minimum, self.maximum, self.mean, self.median, self.std,
                                       self.abs_min, self.abs_max, self.abs_mean, self.abs_median,
-                                      self.abs_std, self.mean_abs_delta, self.mean_rel_delta]]
-
+                                      self.abs_std, self.mean_abs_delta, self.mean_rel_delta,
+                                      self.max_to_min, self.count_abs_big, self.count_abs_ext_big,
+                                      self.abs_trend, self.mad, self.skew, self.abs_skew, self.kurtosis,
+                                      self.abs_kurtosis, self.hilbert, self.hann]]
         names = names.tolist() + quantile_names + abs_quantile_names
 
         if self.window is not None:
-            all_names = [str(i) + "_" + name for i in np.unique(self.indicators) for name in names]
-            all_names = all_names + ["all_" + name for name in names]
+            all_names = [str(i) + "_" + name for i in np.unique(self.indicators) for name in names + STALTA_names_window + exp_mov_ave_names_window]
+            self.result_template_window = np.zeros(int(len(all_names) / len(np.unique(self.indicators))))
+            all_names = all_names + ["all_" + name for name in names] + STALTA_names + exp_mov_ave_names
+            self.result_template = np.zeros(len(names + STALTA_names + exp_mov_ave_names))
             return all_names
-
         else:
-            return names
+            all_names = names + STALTA_names + exp_mov_ave_names
+            self.result_template = np.zeros(len(all_names))
+            return all_names
 
     def compute(self, arr):
         if self.window is None:
@@ -137,7 +175,7 @@ class FeatureComputer():
         else:
             df = pd.DataFrame({"arr": arr, "indicator": self.indicators})
             values = (df.groupby("indicator")["arr"]
-                      .apply(lambda x: self._compute_features(x))
+                      .apply(lambda x: self._compute_features(x, window=True))
                       .apply(pd.Series)
                       .values
                       .flatten())
@@ -147,8 +185,11 @@ class FeatureComputer():
 
             return np.concatenate([values, overall_values])
 
-    def _compute_features(self, arr):
-        result = np.zeros_like(self.result_template)
+    def _compute_features(self, arr, window=False):
+        if window:
+            result = np.zeros_like(self.result_template_window)
+        else:
+            result = np.zeros_like(self.result_template)
         i = 0
         if self.minimum:
             result[i] = np.min(arr)
@@ -186,11 +227,66 @@ class FeatureComputer():
         if self.mean_rel_delta:
             result[i] = np.mean(np.nonzero((np.diff(arr) / arr[:-1]))[0])
             i += 1
+        if self.max_to_min:
+            result[i] = np.max(arr) / np.abs(np.min(arr))
+            i += 1
+        if self.count_abs_big:  # threshold is chosen such that 0.05% of train is above the threshold
+            result[i] = len(arr[np.abs(arr) > 97])
+            i += 1
+        if self.count_abs_ext_big:  # threshold is chosen based on visualization of train
+            result[i] = len(arr[np.abs(arr) > 500])
+            i += 1
+        if self.abs_trend:
+            idx = np.array(range(len(arr)))
+            lr = LinearRegression()
+            lr.fit(idx.reshape(-1, 1), np.abs(arr))
+            result[i] = lr.coef_[0]
+            i += 1
+        if self.mad:  # mean absolute deviation
+            result[i] = np.mean(np.abs(arr - np.mean(arr)))
+            i += 1
+        if self.skew:
+            result[i] = stats.skew(arr)
+            i += 1
+        if self.abs_skew:
+            result[i] = stats.skew(np.abs(arr))
+            i += 1
+        if self.kurtosis:  # measure of tailedness
+            result[i] = stats.kurtosis(arr)
+            i += 1
+        if self.abs_kurtosis:  # measure of tailedness
+            result[i] = stats.kurtosis(np.abs(arr))
+            i += 1
+        if self.hilbert:  # abs mean in hilbert tranformed space
+            result[i] = np.mean(np.abs(signal.hilbert(arr)))
+            i += 1
+        if self.hann:  # mean in hann window
+            result[i] = np.mean(signal.convolve(arr, signal.hann(150), mode='same') / np.sum(signal.hann(150)))
+            i += 1
         if self.quantiles is not None:
             result[i:i + len(self.quantiles)] = np.quantile(arr, q=self.quantiles)
             i += len(self.quantiles)
         if self.abs_quantiles is not None:
             result[i:i + len(self.abs_quantiles)] = np.quantile(np.abs(arr), q=self.abs_quantiles)
+            i += len(self.abs_quantiles)
+        if self.STALTA:
+            if window:
+                result[i:i + len(self.STALTA_options_window)] = np.array(
+                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.STALTA_options_window])
+                i += len(self.STALTA_options_window)
+            else:
+                result[i:i + len(self.STALTA_options)] = np.array(
+                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.STALTA_options])
+                i += len(self.STALTA_options)
+        if self.exp_mov_ave:
+            if window:
+                result[i:i + len(self.exp_mov_ave_options_window)] = np.array(
+                        [np.mean(pd.Series.ewm(pd.Series(arr), span=q).mean()) for q in self.exp_mov_ave_options_window])
+                i += len(self.exp_mov_ave_options_window)
+            else:
+                result[i:i + len(self.exp_mov_ave_options)] = np.array(
+                        [np.mean(pd.Series.ewm(pd.Series(arr), span=q).mean()) for q in self.exp_mov_ave_options])
+                i += len(self.exp_mov_ave_options)
 
         return result
 
