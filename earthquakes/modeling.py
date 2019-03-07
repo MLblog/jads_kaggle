@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
+import gc
 
 from scipy import signal
 
@@ -43,7 +44,7 @@ def train_and_predict(train_x, train_y, val_x, model_cls, return_model=False, **
 
 def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_failure",
                              n_splits=5, train_samples=1000, val_samples=500, predict_test=False,
-                             stft=True, data_dir="../data/test", **model_params):
+                             stft=False, stft_feature_computer=None, data_dir="../data/test", **model_params):
     """Perform custom cross validation using randomly sampled sequences of observations.
 
     Parameters
@@ -69,8 +70,10 @@ def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_fa
     predict_test: boolean, optional (default: False),
         If True, predicts on the test data at every fold and returns (together with cv scores)
         a dataframe with predictions on the test data.
-    stft: boolean, optional (default: True),
-        If true, predicts the Compute the Short Time Fourier Transform
+    stft: boolean, optional (default: False),
+        If true, predicts the Compute the Short Time Fourier Transform.
+    stft_feature_computer: FeatureComputer object or None,
+        The computer for stft features.
     data_dir: str, optional (default: "../data")
         The path to the main folder with the for this competition data. Note that test data is
         in several files, which are assumed to be in a subfolder called 'test' inside the data_dir.
@@ -92,19 +95,22 @@ def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_fa
 
         # split the data according to the indices
         progress("Splitting data in train and validation sets.")
-        train = data.iloc[train_index]
-        val = data.iloc[val_index]
+        cols = data.columns
+        train = pd.DataFrame(data.values[train_index], columns=cols)
+        val = pd.DataFrame(data.values[val_index], columns=cols)
 
         # sample random sequences for training
         progress("Sampling {} sequences from training data.".format(train_samples))
-        train_features = create_feature_dataset(train, feature_computer, n_samples=train_samples, stft=stft)
+        train_features = create_feature_dataset(train, feature_computer, n_samples=train_samples,
+                                                stft=stft, stft_feature_computer=stft_feature_computer)
         y_train = train_features[ycol]
         x_train = train_features.drop(ycol, axis=1)
         progress("Train set sampled.")
 
         # sample random sequences for validation
         progress("Sampling {} sequences from validation data.".format(val_samples))
-        val_features = create_feature_dataset(val, feature_computer, n_samples=val_samples, stft=stft)
+        val_features = create_feature_dataset(val, feature_computer, n_samples=val_samples,
+                                              stft=stft, stft_feature_computer=stft_feature_computer)
         y_val = val_features[ycol]
         x_val = val_features.drop(ycol, axis=1)
         progress("Validation set sampled.")
@@ -122,11 +128,17 @@ def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_fa
         # predict on test set if specified
         if predict_test:
             if i == 0:
-                test_predictions = predict_on_test(model, feature_computer, data_dir=data_dir, stft=stft)
+                test_predictions = predict_on_test(model, feature_computer, data_dir=data_dir, ycol=ycol,
+                                                   stft=stft, stft_feature_computer=stft_feature_computer)
             else:
-                new_predictions = predict_on_test(model, feature_computer, data_dir=data_dir, stft=stft)
+                new_predictions = predict_on_test(model, feature_computer, data_dir=data_dir, ycol=ycol,
+                                                  stft=stft, stft_feature_computer=stft_feature_computer)
                 test_predictions[ycol + "_{}".format(i)] = new_predictions[ycol].copy()
         progress("Predictions on test set made.")
+
+        # clear up memory
+        del train, val, train_features, y_train, x_train, val_features, x_val, y_val, model
+        gc.collect()
 
     if predict_test:
         return scores, test_predictions
@@ -134,7 +146,8 @@ def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_fa
         return scores
 
 
-def predict_on_test(model, feature_computer, ycol="time_to_failure", data_dir="../data", stft=True):
+def predict_on_test(model, feature_computer, ycol="time_to_failure", stft=True, stft_feature_computer=None,
+                    data_dir="../data", ):
     """Load the test data, compute features on every segment, and predict the target.
 
     Parameters
@@ -152,8 +165,10 @@ def predict_on_test(model, feature_computer, ycol="time_to_failure", data_dir=".
         The path to the main folder with the for this competition data. Note that test data is
         in several files, which are assumed to be in a subfolder called 'test' inside the data_dir.
         A file 'sample_submission.csv' is assumed to be directly in data_dir.
-    stft: bool, optional (default: True),
-        To calculate the Short Time Fourier Transform
+    stft: bool, optional (default: False),
+        Whether to calculate the Short Time Fourier Transform.
+    stft_feature_computer: FeatureComputer object or None,
+        The computer for stft features.
 
     Returns
     -------
@@ -164,7 +179,7 @@ def predict_on_test(model, feature_computer, ycol="time_to_failure", data_dir=".
     sample_submission = pd.read_csv(os.path.join(data_dir, "sample_submission.csv"), index_col="seg_id")
     x_test = pd.DataFrame(columns=feature_computer.feature_names, dtype=np.float64, index=sample_submission.index)
     if stft:
-        x_test_stft= pd.DataFrame(columns=[x + "_stft" for x in feature_computer.feature_names],  # noqa
+        x_test_stft= pd.DataFrame(columns=[x + "_stft" for x in stft_feature_computer.feature_names],  # noqa
                                   dtype=np.float64,
                                   index=sample_submission.index)
 
@@ -174,11 +189,12 @@ def predict_on_test(model, feature_computer, ycol="time_to_failure", data_dir=".
                  same_line=True, newline_end=(i + 1 == len(x_test)))
 
         segment = pd.read_csv(os.path.join(data_dir, "test", seg_id + ".csv"))
-        x_test.loc[seg_id, :] = feature_computer.compute(np.array(segment))
+        x_test.loc[seg_id, :] = feature_computer.compute(segment["acoustic_data"].values)
         if stft:
-            _, _, zxx = signal.stft([item for sublist in np.array(segment) for item in sublist])
+            # _, _, zxx = signal.stft([item for sublist in segment["acoustic_data"].values for item in sublist])
+            _, _, zxx = signal.stft(segment["acoustic_data"].values)
             x_stft = np.sum(np.abs(zxx), axis=0)
-            x_test_stft.loc[seg_id, :] = feature_computer.compute(x_stft)
+            x_test_stft.loc[seg_id, :] = stft_feature_computer.compute(x_stft)
 
     if stft:
         x_test = pd.concat([x_test, x_test_stft], axis=1)
