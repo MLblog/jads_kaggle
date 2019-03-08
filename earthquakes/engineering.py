@@ -78,7 +78,7 @@ class FeatureComputer():
         Whether to calculate the abs mean in hilbert tranformed space.
     hann: boolean, optional (default: True),
         Whether to calculate the abs mean in hann window.
-    STALTA: boolean, optional (default: True),
+    stalta: boolean, optional (default: True),
         Whether to calculate the short time average over long time average of the
         time series.
     exp_mov_ave: boolean, optional (default: True),
@@ -106,7 +106,7 @@ class FeatureComputer():
                  abs_min=True, abs_max=True, abs_mean=True, abs_median=True, abs_std=True, abs_quantiles=None,
                  mean_abs_delta=True, mean_rel_delta=True, max_to_min=True, count_abs_big=True,
                  count_abs_ext_big=True, abs_trend=True, mad=True, skew=True, abs_skew=True, kurtosis=True,
-                 abs_kurtosis=True, hilbert=True, hann=True, STALTA=True, exp_mov_ave=True, window=None,
+                 abs_kurtosis=True, hilbert=True, hann=True, stalta=True, exp_mov_ave=True, window=None,
                  array_length=150000):
 
         self.minimum = minimum
@@ -132,7 +132,7 @@ class FeatureComputer():
         self.abs_kurtosis = abs_kurtosis
         self.hilbert = hilbert
         self.hann = hann
-        self.STALTA = STALTA
+        self.stalta = stalta
         self.exp_mov_ave = exp_mov_ave
 
         if quantiles is None:
@@ -147,12 +147,12 @@ class FeatureComputer():
 
         self.window = window
 
-        if self.STALTA is True:
-            self.STALTA_options = [(50, 1000), (100, 1500), (500, 5000), (1000, 10000), (5000, 15000), (10000, 25000)]
+        if self.stalta is True:
+            self.stalta_options = [(50, 1000), (100, 1500), (500, 5000), (1000, 10000), (5000, 15000), (10000, 25000)]
             if self.window:
-                self.STALTA_options_window = [(50, 1000), (100, 1500), (500, 5000), (1000, 5000)]
+                self.stalta_options_window = [(50, 1000), (100, 1500), (500, 5000), (1000, 5000)]
         else:
-            self.STALTA_options = []
+            self.stalta_options = []
 
         if self.exp_mov_ave is True:
             self.exp_mov_ave_options = [300, 3000, 10000]
@@ -174,10 +174,10 @@ class FeatureComputer():
         """Infer the names of the features that will be calculated."""
         quantile_names = [str(q) + "-quantile" for q in self.quantiles]
         abs_quantile_names = [str(q) + "-abs_quantile" for q in self.abs_quantiles]
-        STALTA_names = ["all_STALTA-" + str(q[0]) + "-" + str(q[1]) for q in self.STALTA_options]
+        stalta_names = ["all_STALTA-" + str(q[0]) + "-" + str(q[1]) for q in self.STALTA_options]
         exp_mov_ave_names = ["all_exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options]
         if self.window is not None:
-            STALTA_names_window = ["STALTA-" + str(q[0]) + "-" + str(q[1]) for q in self.STALTA_options_window]
+            stalta_names_window = ["STALTA-" + str(q[0]) + "-" + str(q[1]) for q in self.STALTA_options_window]
             exp_mov_ave_names_window = ["exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options_window]
         names = np.array(self.feats)[[self.minimum, self.maximum, self.mean, self.median, self.std,
                                       self.abs_min, self.abs_max, self.abs_mean, self.abs_median,
@@ -188,13 +188,13 @@ class FeatureComputer():
         names = names.tolist() + quantile_names + abs_quantile_names
 
         if self.window is not None:
-            all_names = [str(i) + "_" + name for i in np.unique(self.indicators) for name in names + STALTA_names_window + exp_mov_ave_names_window]
+            all_names = [str(i) + "_" + name for i in np.unique(self.indicators) for name in names + stalta_names_window + exp_mov_ave_names_window]
             self.result_template_window = np.zeros(int(len(all_names) / len(np.unique(self.indicators))))
-            all_names = all_names + ["all_" + name for name in names] + STALTA_names + exp_mov_ave_names
-            self.result_template = np.zeros(len(names + STALTA_names + exp_mov_ave_names))
+            all_names = all_names + ["all_" + name for name in names] + stalta_names + exp_mov_ave_names
+            self.result_template = np.zeros(len(names + stalta_names + exp_mov_ave_names))
             return all_names
         else:
-            all_names = names + STALTA_names + exp_mov_ave_names
+            all_names = names + stalta_names + exp_mov_ave_names
             self.result_template = np.zeros(len(all_names))
             return all_names
 
@@ -298,15 +298,15 @@ class FeatureComputer():
         if self.abs_quantiles is not None:
             result[i:i + len(self.abs_quantiles)] = np.quantile(np.abs(arr), q=self.abs_quantiles)
             i += len(self.abs_quantiles)
-        if self.STALTA:
+        if self.stalta:
             if window:
-                result[i:i + len(self.STALTA_options_window)] = np.array(
-                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.STALTA_options_window])
+                result[i:i + len(self.stalta_options_window)] = np.array(
+                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.stalta_options_window])
                 i += len(self.STALTA_options_window)
             else:
-                result[i:i + len(self.STALTA_options)] = np.array(
-                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.STALTA_options])
-                i += len(self.STALTA_options)
+                result[i:i + len(self.stalta_options)] = np.array(
+                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.stalta_options])
+                i += len(self.stalta_options)
         if self.exp_mov_ave:
             if window:
                 result[i:i + len(self.exp_mov_ave_options_window)] = np.array(
