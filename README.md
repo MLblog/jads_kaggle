@@ -19,3 +19,5 @@ Information for each of them can be found in its respective directory.
 11. Valentine Tuyishime
 12. Eleftherios Koulierakis
 13. Hadi Sotudeh
+14. Antonios Stellas
+15. Max Ortega
