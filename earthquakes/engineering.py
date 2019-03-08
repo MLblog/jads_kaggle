@@ -54,6 +54,35 @@ class FeatureComputer():
     mean_abs_delta, mean_rel_delta: boolean, optional (default: True),
         Whether to compute the average change per observation. For 'mean_rel_delta' it is divided
         by the value of the previous observation, which leads to a change proportion.
+    max_to_min: boolean, optional (default: True),
+        Whether to compute the rate between the absolute maximum and the absolute minimum.
+    count_abs_big: boolean, optional (default: True),
+        Whether to count the number of absolute values greater than 97.
+    count_abs_ext_big: boolean, optional (default: True)
+        Whether to count the number of absolute values greater than 500.
+    abs_trend: boolean, optional (default: True),
+        Whether to calculate the linear trend of the time series.
+    mad: boolean, optional (default: True),
+        Whether to calculate the mean absolute deviation of the time series.
+    skew: boolean, optional (default: True),
+        Whether to calculate the skewness of the time series.
+    abs_skew: boolean, optional (default: True),
+        Whether to calculate the skewness of the absolute values of the time series.
+    kurtosis: boolean, optional (default: True),
+        Whether to calculate the kurosis of the time series. The kurtosis
+        measures the tailedness of a time series
+    abs_kurtosis: boolean, optional (default: True),
+        Whether to calculate the kurosis of the absolute values of the time series.
+        The kurtosis measures the tailedness of a time series
+    hilbert: boolean, optional (default: True),
+        Whether to calculate the abs mean in hilbert tranformed space.
+    hann: boolean, optional (default: True),
+        Whether to calculate the abs mean in hann window.
+    STALTA: boolean, optional (default: True),
+        Whether to calculate the short time average over long time average of the
+        time series.
+    exp_mov_ave: boolean, optional (default: True),
+        Whether to calculate the mean of the mean of the exponential moving average.
     window: int or None, optional (default: None),
         If given, calculates the features over subsequences of size 'window'.
     array_length: int, optional (default: 150000),
