@@ -18,5 +18,6 @@ Information for each of them can be found in its respective directory.
 10. Nitin Narayan
 11. Valentine Tuyishime
 12. Eleftherios Koulierakis
-13. Antonios Stellas
-14. Max Ortega
+13. Hadi Sotudeh
+14. Antonios Stellas
+15. Max Ortega
