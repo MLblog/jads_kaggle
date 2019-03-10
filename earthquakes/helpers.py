@@ -64,9 +64,9 @@ class Caller:
         return signal.loc[i_init: i_init + window_size - 1, :]
 
 
-def create_feature_dataset_source(caller_sm, feature_computer, xcol="acoustic_data", ycol="time_to_failure",
+def create_feature_dataset_source(caller_cl, feature_computer, xcol="acoustic_data", ycol="time_to_failure",
                                   stft=False, stft_feature_computer=None, events_id=(245829584, 307838916),
-                                  size=150000, step=100):
+                                  window_size=150000, step=100):
     """Samples sequences from the data, computes features for each sequence, and stores the result
     in a new dataframe. This function is a modification from the 'create feature' at the engineering
     script.
@@ -82,17 +82,24 @@ def create_feature_dataset_source(caller_sm, feature_computer, xcol="acoustic_da
         The column referring to the the signal data.
     ycol: str, optional (default: "time_to_failure"),
         The column referring to the target value.
-    n_samples: int, optional (default: 100),
-        The number of sequences to process and return.
     stft: bool, optional (default: False),
         Whether to calculate the Short Time Fourier Transform.
     stft_feature_computer: FeatureComputer object or None,
         The computer for stft features.
+    events_id: tuple
+        index value that define the range of values that we are
+        going to take the data from.
+    window_size: int
+        number of observations to take to get
+        information about y
+    step: int
+        number of observations to skip between ys
 
     Returns
     -------
     feature_data: pd.DataFrame,
-        A new dataframe of shape (n_samples, number of features) with the new features per sequence.
+        A new dataframe of shape (number_intervals, number of features) with the new features per sequence.
+        The index corresponds to the y position.
     """
     number_intervals = int((events_id[1] - events_id[0])/step)
     indices = np.linspace(events_id[0], events_id[1], number_intervals).astype(int)
@@ -109,8 +116,8 @@ def create_feature_dataset_source(caller_sm, feature_computer, xcol="acoustic_da
         new_data_stft = pd.DataFrame({feature + '_stft': np.zeros(number_intervals) for feature in stft_feature_computer.feature_names})
 
     for i, idx in enumerate(tqdm(indices)):
-        data = caller_sm.get_intervals(i_init=idx,
-                                       window_size=150000)
+        data = caller_cl.get_intervals(i_init=idx,
+                                       window_size=window_size)
 
         y = data[ycol].values[-1:]
         x = data[xcol].values
@@ -126,6 +133,55 @@ def create_feature_dataset_source(caller_sm, feature_computer, xcol="acoustic_da
     if stft:
         new_data = pd.concat([new_data, new_data_stft], axis=1)
 
+    new_data[ycol] = targets
+    new_data.index = target_id
+    return new_data
+
+
+def create_signal_dataset(caller_cl, xcol="acoustic_data", ycol="time_to_failure",
+                          events_id=(245829584, 307838916), window_size=150000, step=100):
+    """Funtion to get the signal values before the event happen.
+    caller_sm: caller class
+    feature_computer: FeatureComputer object or similar,
+        A class that implements a method '.compute()' that takes an array and returns
+        features. It must also have an attribute 'feature_names' that shows the corresponding
+        names of the features.
+    xcol: str, optional (default: "acoustic_data"),
+        The column referring to the the signal data.
+    ycol: str, optional (default: "time_to_failure"),
+        The column referring to the target value.
+        events_id: tuple
+    index value that define the range of values that we are
+        going to take the data from.
+    window_size: int
+        number of observations to take to get
+        information about y
+    step: int
+        number of observations to skip between ys
+
+    Returns
+    -------
+    feature_data: pd.DataFrame,
+        A new dataframe of shape (number_intervals, window_size).
+        The index corresponds to the y position.
+    """
+    number_intervals = int((events_id[1] - events_id[0])/step)
+    indices = np.linspace(events_id[0], events_id[1], number_intervals).astype(int)
+    new_data = np.zeros((len(indices), window_size))
+    targets = np.zeros(number_intervals)
+    target_id = np.zeros(number_intervals, dtype=int)
+
+    for i, idx in enumerate(tqdm(indices)):
+        data = caller_cl.get_intervals(i_init=idx,
+                                       window_size=window_size)
+
+        y = data[ycol].values[-1:]
+        x = data[xcol].values
+        new_data[i, :] = x
+        targets[i] = y
+        target_id[i] = data.index[-1]
+
+    new_data = pd.DataFrame(new_data)
     new_data[ycol] = targets
     new_data.index = target_id
     return new_data
