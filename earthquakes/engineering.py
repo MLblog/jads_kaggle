@@ -174,10 +174,10 @@ class FeatureComputer():
         """Infer the names of the features that will be calculated."""
         quantile_names = [str(q) + "-quantile" for q in self.quantiles]
         abs_quantile_names = [str(q) + "-abs_quantile" for q in self.abs_quantiles]
-        stalta_names = ["all_STALTA-" + str(q[0]) + "-" + str(q[1]) for q in self.STALTA_options]
+        stalta_names = ["all_stalta-" + str(q[0]) + "-" + str(q[1]) for q in self.stalta_options]
         exp_mov_ave_names = ["all_exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options]
         if self.window is not None:
-            stalta_names_window = ["STALTA-" + str(q[0]) + "-" + str(q[1]) for q in self.STALTA_options_window]
+            stalta_names_window = ["stalta-" + str(q[0]) + "-" + str(q[1]) for q in self.stalta_options_window]
             exp_mov_ave_names_window = ["exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options_window]
         names = np.array(self.feats)[[self.minimum, self.maximum, self.mean, self.median, self.std,
                                       self.abs_min, self.abs_max, self.abs_mean, self.abs_median,
@@ -302,7 +302,7 @@ class FeatureComputer():
             if window:
                 result[i:i + len(self.stalta_options_window)] = np.array(
                         [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.stalta_options_window])
-                i += len(self.STALTA_options_window)
+                i += len(self.stalta_options_window)
             else:
                 result[i:i + len(self.stalta_options)] = np.array(
                         [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.stalta_options])
