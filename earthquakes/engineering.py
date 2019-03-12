@@ -142,7 +142,7 @@ class FeatureComputer():
             self.abs_quantiles = abs_quantiles
 
         self.window = window
-        
+
         if count_abs_big is None:
             self.count_abs_big = []
         else:
