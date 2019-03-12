@@ -56,10 +56,9 @@ class FeatureComputer():
         by the value of the previous observation, which leads to a change proportion.
     max_to_min: boolean, optional (default: True),
         Whether to compute the rate between the absolute maximum and the absolute minimum.
-    count_abs_big: boolean, optional (default: True),
-        Whether to count the number of absolute values greater than 97.
-    count_abs_ext_big: boolean, optional (default: True)
-        Whether to count the number of absolute values greater than 500.
+    count_abs_big: list of floats,
+        The thresholds for which it is counted how many times the absolute signal
+        exceeds the threshold.
     abs_trend: boolean, optional (default: True),
         Whether to calculate the linear trend of the time series.
     mad: boolean, optional (default: True),
@@ -98,14 +97,13 @@ class FeatureComputer():
     In order to see which value in the result refers to which feature, see 'self.feature_names'.
     """
     feats = ["minimum", "maximum", "mean", "median", "std", "abs_min", "abs_max", "abs_mean",
-             "abs_median", "abs_std", "mean_abs_delta", "mean_rel_delta", "max_to_min", "count_abs_big",
-             "count_abs_ext_big", "abs_trend", "mad", "skew", "abs_skew", "kurtosis", "abs_kurtosis",
-             "hilbert", "hann"]
+             "abs_median", "abs_std", "mean_abs_delta", "mean_rel_delta", "max_to_min", "abs_trend",
+             "mad", "skew", "abs_skew", "kurtosis", "abs_kurtosis", "hilbert", "hann"]
 
     def __init__(self, minimum=True, maximum=True, mean=True, median=True, std=True, quantiles=None,
                  abs_min=True, abs_max=True, abs_mean=True, abs_median=True, abs_std=True, abs_quantiles=None,
-                 mean_abs_delta=True, mean_rel_delta=True, max_to_min=True, count_abs_big=True,
-                 count_abs_ext_big=True, abs_trend=True, mad=True, skew=True, abs_skew=True, kurtosis=True,
+                 mean_abs_delta=True, mean_rel_delta=True, max_to_min=True, count_abs_big=None,
+                 abs_trend=True, mad=True, skew=True, abs_skew=True, kurtosis=True,
                  abs_kurtosis=True, hilbert=True, hann=True, stalta=True, exp_mov_ave=True, window=None,
                  array_length=150000):
 
@@ -122,8 +120,6 @@ class FeatureComputer():
         self.mean_abs_delta = mean_abs_delta
         self.mean_rel_delta = mean_rel_delta
         self.max_to_min = max_to_min
-        self.count_abs_big = count_abs_big
-        self.count_abs_ext_big = count_abs_ext_big
         self.abs_trend = abs_trend
         self.mad = mad
         self.skew = skew
@@ -146,6 +142,11 @@ class FeatureComputer():
             self.abs_quantiles = abs_quantiles
 
         self.window = window
+        
+        if count_abs_big is None:
+            self.count_abs_big = []
+        else:
+            self.count_abs_big = count_abs_big
 
         if self.stalta is True:
             self.stalta_options = [(50, 1000), (100, 1500), (500, 5000), (1000, 10000), (5000, 15000), (10000, 25000)]
@@ -174,6 +175,7 @@ class FeatureComputer():
         """Infer the names of the features that will be calculated."""
         quantile_names = [str(q) + "-quantile" for q in self.quantiles]
         abs_quantile_names = [str(q) + "-abs_quantile" for q in self.abs_quantiles]
+        count_abs_big_names = [str(q) + "-count_big" for q in self.count_abs_big]
         stalta_names = ["all_stalta-" + str(q[0]) + "-" + str(q[1]) for q in self.stalta_options]
         exp_mov_ave_names = ["all_exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options]
         if self.window is not None:
@@ -182,10 +184,9 @@ class FeatureComputer():
         names = np.array(self.feats)[[self.minimum, self.maximum, self.mean, self.median, self.std,
                                       self.abs_min, self.abs_max, self.abs_mean, self.abs_median,
                                       self.abs_std, self.mean_abs_delta, self.mean_rel_delta,
-                                      self.max_to_min, self.count_abs_big, self.count_abs_ext_big,
-                                      self.abs_trend, self.mad, self.skew, self.abs_skew, self.kurtosis,
-                                      self.abs_kurtosis, self.hilbert, self.hann]]
-        names = names.tolist() + quantile_names + abs_quantile_names
+                                      self.max_to_min, self.abs_trend, self.mad, self.skew, self.abs_skew,
+                                      self.kurtosis, self.abs_kurtosis, self.hilbert, self.hann]]
+        names = names.tolist() + quantile_names + abs_quantile_names + count_abs_big_names
 
         if self.window is not None:
             all_names = [str(i) + "_" + name for i in np.unique(self.indicators) for name in names + stalta_names_window + exp_mov_ave_names_window]
@@ -259,12 +260,6 @@ class FeatureComputer():
         if self.max_to_min:
             result[i] = np.max(arr) / np.abs(np.min(arr))
             i += 1
-        if self.count_abs_big:  # threshold is chosen such that 0.05% of train is above the threshold
-            result[i] = len(arr[np.abs(arr) > 97])
-            i += 1
-        if self.count_abs_ext_big:  # threshold is chosen based on visualization of train
-            result[i] = len(arr[np.abs(arr) > 500])
-            i += 1
         if self.abs_trend:
             idx = np.array(range(len(arr)))
             lr = LinearRegression()
@@ -298,6 +293,9 @@ class FeatureComputer():
         if self.abs_quantiles is not None:
             result[i:i + len(self.abs_quantiles)] = np.quantile(np.abs(arr), q=self.abs_quantiles)
             i += len(self.abs_quantiles)
+        if self.count_abs_big is not None:
+            result[i: i + len(self.count_abs_big)] = np.array([len(arr[np.abs(arr) > q]) for q in self.count_abs_big])
+            i += len(self.count_abs_big)
         if self.stalta:
             if window:
                 result[i:i + len(self.stalta_options_window)] = np.array(
