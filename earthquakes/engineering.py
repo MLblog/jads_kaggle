@@ -77,11 +77,18 @@ class FeatureComputer():
         Whether to calculate the abs mean in hilbert tranformed space.
     hann: boolean, optional (default: True),
         Whether to calculate the abs mean in hann window.
-    stalta: boolean, optional (default: True),
-        Whether to calculate the short time average over long time average of the
-        time series.
-    exp_mov_ave: boolean, optional (default: True),
-        Whether to calculate the mean of the mean of the exponential moving average.
+    stalta: list of floats,
+        The short time average and the long time average over which the short time
+        average over long time average is calculated.
+    stalta_window: list of floats,
+        The short time average and the long time average over which the short time
+        average over long time average is calculated per window.
+    exp_mov_ave: list of floats,
+        The time windows over which the mean of the mean of the exponential
+        moving average is calculated.
+    exp_mov_ave_window: list of floats,
+        The time windows over which the mean of the mean of the exponential
+        moving average is calculated per window.
     window: int or None, optional (default: None),
         If given, calculates the features over subsequences of size 'window'.
     array_length: int, optional (default: 150000),
