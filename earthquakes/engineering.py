@@ -103,9 +103,9 @@ class FeatureComputer():
     def __init__(self, minimum=True, maximum=True, mean=True, median=True, std=True, quantiles=None,
                  abs_min=True, abs_max=True, abs_mean=True, abs_median=True, abs_std=True, abs_quantiles=None,
                  mean_abs_delta=True, mean_rel_delta=True, max_to_min=True, count_abs_big=None,
-                 abs_trend=True, mad=True, skew=True, abs_skew=True, kurtosis=True,
-                 abs_kurtosis=True, hilbert=True, hann=True, stalta=True, exp_mov_ave=True, window=None,
-                 array_length=150000):
+                 abs_trend=True, mad=True, skew=True, abs_skew=True, kurtosis=True, abs_kurtosis=True,
+                 hilbert=True, hann=True, stalta=None, stalta_window=None, exp_mov_ave=None, exp_mov_ave_window=None,
+                 window=None, array_length=150000):
 
         self.minimum = minimum
         self.maximum = maximum
@@ -128,8 +128,6 @@ class FeatureComputer():
         self.abs_kurtosis = abs_kurtosis
         self.hilbert = hilbert
         self.hann = hann
-        self.stalta = stalta
-        self.exp_mov_ave = exp_mov_ave
 
         if quantiles is None:
             self.quantiles = []
@@ -148,19 +146,25 @@ class FeatureComputer():
         else:
             self.count_abs_big = count_abs_big
 
-        if self.stalta is True:
-            self.stalta_options = [(50, 1000), (100, 1500), (500, 5000), (1000, 10000), (5000, 15000), (10000, 25000)]
-            if self.window:
-                self.stalta_options_window = [(50, 1000), (100, 1500), (500, 5000), (1000, 5000)]
+        if stalta is None:
+            self.stalta = []
         else:
-            self.stalta_options = []
+            self.stalta = stalta
 
-        if self.exp_mov_ave is True:
-            self.exp_mov_ave_options = [300, 3000, 10000]
-            if self.window:
-                self.exp_mov_ave_options_window = [300, 1000, 2000]
+        if stalta_window is None:
+            self.stalta_window = []
         else:
-            self.exp_mov_ave_options = []
+            self.stalta_window = stalta_window
+
+        if exp_mov_ave is None:
+            self.exp_mov_ave = []
+        else:
+            self.exp_mov_ave = exp_mov_ave
+
+        if exp_mov_ave_window is None:
+            self.exp_mov_ave_window = []
+        else:
+            self.exp_mov_ave_window = exp_mov_ave_window
 
         if self.window is not None:
             self.indicators = np.array(([np.ones(window)*i for i in range(int(np.ceil(array_length/window)))]),
@@ -176,11 +180,11 @@ class FeatureComputer():
         quantile_names = [str(q) + "-quantile" for q in self.quantiles]
         abs_quantile_names = [str(q) + "-abs_quantile" for q in self.abs_quantiles]
         count_abs_big_names = [str(q) + "-count_big" for q in self.count_abs_big]
-        stalta_names = ["all_stalta-" + str(q[0]) + "-" + str(q[1]) for q in self.stalta_options]
-        exp_mov_ave_names = ["all_exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options]
+        stalta_names = ["all_stalta-" + str(q[0]) + "-" + str(q[1]) for q in self.stalta]
+        exp_mov_ave_names = ["all_exp_mov_ave-" + str(q) for q in self.exp_mov_ave]
         if self.window is not None:
-            stalta_names_window = ["stalta-" + str(q[0]) + "-" + str(q[1]) for q in self.stalta_options_window]
-            exp_mov_ave_names_window = ["exp_mov_ave-" + str(q) for q in self.exp_mov_ave_options_window]
+            stalta_names_window = ["stalta-" + str(q[0]) + "-" + str(q[1]) for q in self.stalta_window]
+            exp_mov_ave_names_window = ["exp_mov_ave-" + str(q) for q in self.exp_mov_ave_window]
         names = np.array(self.feats)[[self.minimum, self.maximum, self.mean, self.median, self.std,
                                       self.abs_min, self.abs_max, self.abs_mean, self.abs_median,
                                       self.abs_std, self.mean_abs_delta, self.mean_rel_delta,
@@ -298,22 +302,22 @@ class FeatureComputer():
             i += len(self.count_abs_big)
         if self.stalta:
             if window:
-                result[i:i + len(self.stalta_options_window)] = np.array(
-                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.stalta_options_window])
-                i += len(self.stalta_options_window)
+                result[i:i + len(self.stalta_window)] = np.array(
+                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.stalta_window])
+                i += len(self.stalta_window)
             else:
-                result[i:i + len(self.stalta_options)] = np.array(
-                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.stalta_options])
-                i += len(self.stalta_options)
+                result[i:i + len(self.stalta)] = np.array(
+                        [np.mean(classic_sta_lta(arr, q[0], q[1])) for q in self.stalta])
+                i += len(self.stalta)
         if self.exp_mov_ave:
             if window:
-                result[i:i + len(self.exp_mov_ave_options_window)] = np.array(
-                        [np.mean(pd.Series.ewm(pd.Series(arr), span=q).mean()) for q in self.exp_mov_ave_options_window])
-                i += len(self.exp_mov_ave_options_window)
+                result[i:i + len(self.exp_mov_ave_window)] = np.array(
+                        [np.mean(pd.Series.ewm(pd.Series(arr), span=q).mean()) for q in self.exp_mov_ave_window])
+                i += len(self.exp_mov_ave_window)
             else:
-                result[i:i + len(self.exp_mov_ave_options)] = np.array(
-                        [np.mean(pd.Series.ewm(pd.Series(arr), span=q).mean()) for q in self.exp_mov_ave_options])
-                i += len(self.exp_mov_ave_options)
+                result[i:i + len(self.exp_mov_ave)] = np.array(
+                        [np.mean(pd.Series.ewm(pd.Series(arr), span=q).mean()) for q in self.exp_mov_ave])
+                i += len(self.exp_mov_ave)
 
         return result
 
