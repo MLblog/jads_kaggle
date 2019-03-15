@@ -42,7 +42,7 @@ def train_and_predict(train_x, train_y, val_x, model_cls, return_model=False, **
         return predictions
 
 
-def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_failure",
+def cv_with_feature_computer(data, model_cls, feature_computer, test_data=None, ycol="time_to_failure",
                              n_splits=5, train_samples=1000, val_samples=500, predict_test=False,
                              stft=False, stft_feature_computer=None, data_dir="../data/test", **model_params):
     """Perform custom cross validation using randomly sampled sequences of observations.
@@ -59,6 +59,9 @@ def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_fa
         A class that implements a method '.compute()' that takes an array and returns
         features. It must also have an attribute 'feature_names' that shows the corresponding
         names of the features.
+    test_data: pd.DataFrame or None,
+        The test data to use when predict_test=True. If None and predict_test=True, loads
+        the data from disk at every fold.
     ycol: str, optional (default: "time_to_failure"),
         The column referring to the target value.
     n_splits: int, optional (default: 5)
@@ -128,10 +131,10 @@ def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_fa
         # predict on test set if specified
         if predict_test:
             if i == 0:
-                test_predictions = predict_on_test(model, feature_computer, data_dir=data_dir, ycol=ycol,
+                test_predictions = predict_on_test(model, feature_computer=feature_computer, test_data=test_data, data_dir=data_dir, ycol=ycol,
                                                    stft=stft, stft_feature_computer=stft_feature_computer)
             else:
-                new_predictions = predict_on_test(model, feature_computer, data_dir=data_dir, ycol=ycol,
+                new_predictions = predict_on_test(model, feature_computer=feature_computer, test_data=test_data, data_dir=data_dir, ycol=ycol,
                                                   stft=stft, stft_feature_computer=stft_feature_computer)
                 test_predictions[ycol + "_{}".format(i)] = new_predictions[ycol].copy()
         progress("Predictions on test set made.")
@@ -146,15 +149,12 @@ def cv_with_feature_computer(data, model_cls, feature_computer, ycol="time_to_fa
         return scores
 
 
-def predict_on_test(model, feature_computer, ycol="time_to_failure", stft=True, stft_feature_computer=None,
-                    data_dir="../data", ):
+def create_test_dataset(feature_computer, ycol="time_to_failure", stft=True, stft_feature_computer=None,
+                        data_dir="../data"):
     """Load the test data, compute features on every segment, and predict the target.
 
     Parameters
     ----------
-    model: a fitted predictor,
-        Must implement the 'predict' method to predict on the test sequences and
-        must already be fitted/trained.
     feature_computer: FeatureComputer object or similar,
         A class that implements a method '.compute()' that takes an array and returns
         features. It must also have an attribute 'feature_names' that shows the corresponding
@@ -199,6 +199,46 @@ def predict_on_test(model, feature_computer, ycol="time_to_failure", stft=True, 
     if stft:
         x_test = pd.concat([x_test, x_test_stft], axis=1)
 
-    sample_submission[ycol] = model.predict(x_test)
+    return x_test
+
+
+def predict_on_test(model, feature_computer=None, test_data=None, data_dir="../data",
+                    ycol="time_to_failure", **stft_kwargs):
+    """Predict on the test data.
+
+    Data can be provided as an argument or loaded from disk.
+
+    Parameters
+    ----------
+    model: a fitted predictor
+        Must implement the 'predict' method to predict on the test sequences and
+        must already be fitted/trained.
+    test_data: array-like or None
+        The test data. If None, a featurecomputer must be provided, so that a
+        dataset can be created before predicting.
+    feature_computer: FeatureComputer object or similar,
+        A class that implements a method '.compute()' that takes an array and returns
+        features. It must also have an attribute 'feature_names' that shows the corresponding
+        names of the features. The same instance as was used during training.
+    ycol: str, optional (default: "time_to_failure"),
+        The column referring to the target value.
+    data_dir: str, optional (default: "../data")
+        The path to the main folder with the for this competition data. Note that test data is
+        in several files, which are assumed to be in a subfolder called 'test' inside the data_dir.
+        A file 'sample_submission.csv' is assumed to be directly in data_dir.
+
+    Returns
+    -------
+    submission: pd.DataFrame
+        Predictions that can be used for submission (or for ensembling).
+    """
+    submission = pd.read_csv(os.path.join(data_dir, "sample_submission.csv"), index_col="seg_id")
+
+    if test_data is None:
+        assert feature_computer is not None, "Either test_data or feature_computer must be provided"
+        test_data = create_test_dataset(feature_computer, data_dir=data_dir, ycol=ycol, **stft_kwargs)
+        progress("Test dataset created.")
+
+    submission[ycol] = model.predict(test_data)
     progress("Predictions made.")
-    return sample_submission.reset_index()
+    return submission.reset_index()
