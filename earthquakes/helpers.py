@@ -35,6 +35,14 @@ class Caller:
         self.intervals = None
 
     def save_data(self, data):
+        """ Funtion to save the data partitions
+
+        Parameters
+        ----------
+        data: pd.DataFrame
+            complete data set with the earthquake
+            information
+        """
         self.index_list = np.linspace(0, data.shape[0], math.ceil(data.shape[0]/self.size)).astype(int)
         range_save = [(x, y-1) for x, y in zip(self.index_list, self.index_list[1:])]
         self.intervals = pd.IntervalIndex.from_arrays(self.index_list[0:len(self.index_list)-1], self.index_list[1::], closed='left')
@@ -47,7 +55,15 @@ class Caller:
             data.loc[i_0:i_f, :].to_pickle(name)
 
     def get_intervals(self, i_init, window_size=150000):
-        """Funtion to get data from memory
+        """Funtion to get data from memory.
+
+        Parameters
+        ----------
+        i_init: int
+            index of the row position where the
+            data window will be taken from
+        window_size: int, (default 150000)
+            number of rows to be taken from the data
         """
         logical_gate = [(i_init in inter) or (i_init + window_size in inter) for inter in self.intervals]
         get_intervals = [x.left for x in self.intervals[logical_gate]]
@@ -101,8 +117,8 @@ def create_feature_dataset_source(caller_cl, feature_computer, xcol="acoustic_da
         A new dataframe of shape (number_intervals, number of features) with the new features per sequence.
         The index corresponds to the y position.
     """
-    number_intervals = int((events_id[1] - events_id[0])/step)
-    indices = np.linspace(events_id[0], events_id[1], number_intervals).astype(int)
+    number_intervals = math.floor((events_id[1] - events_id[0])/step)
+    indices = [events_id[0] + step * i for i in range(number_intervals)]
 
     if (stft is True) and (stft_feature_computer is None):
         assert feature_computer.window is None, ("If stft is True, feature_computer must have window=None or"
@@ -142,10 +158,6 @@ def create_signal_dataset(caller_cl, xcol="acoustic_data", ycol="time_to_failure
                           events_id=(245829584, 307838916), window_size=150000, step=100):
     """Funtion to get the signal values before the event happen.
     caller_sm: caller class
-    feature_computer: FeatureComputer object or similar,
-        A class that implements a method '.compute()' that takes an array and returns
-        features. It must also have an attribute 'feature_names' that shows the corresponding
-        names of the features.
     xcol: str, optional (default: "acoustic_data"),
         The column referring to the the signal data.
     ycol: str, optional (default: "time_to_failure"),
@@ -165,8 +177,8 @@ def create_signal_dataset(caller_cl, xcol="acoustic_data", ycol="time_to_failure
         A new dataframe of shape (number_intervals, window_size).
         The index corresponds to the y position.
     """
-    number_intervals = int((events_id[1] - events_id[0])/step)
-    indices = np.linspace(events_id[0], events_id[1], number_intervals).astype(int)
+    number_intervals = math.floor((events_id[1] - events_id[0])/step)
+    indices = [events_id[0] + step * i for i in range(number_intervals)]
     new_data = np.zeros((len(indices), window_size))
     targets = np.zeros(number_intervals)
     target_id = np.zeros(number_intervals, dtype=int)
