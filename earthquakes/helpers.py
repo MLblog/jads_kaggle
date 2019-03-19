@@ -117,7 +117,7 @@ def create_feature_dataset_source(caller_cl, feature_computer, xcol="acoustic_da
         A new dataframe of shape (number_intervals, number of features) with the new features per sequence.
         The index corresponds to the y position.
     """
-    number_intervals = math.floor((events_id[1] - events_id[0])/step)
+    number_intervals = math.floor((events_id[1] - events_id[0])/step) + 1
     indices = [events_id[0] + step * i for i in range(number_intervals)]
 
     if (stft is True) and (stft_feature_computer is None):
@@ -177,7 +177,7 @@ def create_signal_dataset(caller_cl, xcol="acoustic_data", ycol="time_to_failure
         A new dataframe of shape (number_intervals, window_size).
         The index corresponds to the y position.
     """
-    number_intervals = math.floor((events_id[1] - events_id[0])/step)
+    number_intervals = math.floor((events_id[1] - events_id[0])/step) + 1
     indices = [events_id[0] + step * i for i in range(number_intervals)]
     new_data = np.zeros((len(indices), window_size))
     targets = np.zeros(number_intervals)
