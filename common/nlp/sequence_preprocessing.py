@@ -1,6 +1,10 @@
 import re
-# import string
+import numpy as np
+import pandas as pd
 import copy
+
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
 
 
 # mappings of shorthand phrases to full form
@@ -148,3 +152,56 @@ def preprocess_text_for_dl(*datasets, text_col="question_text",
         data[text_col] = data[text_col].apply(lambda x: clean_string(x))
 
     return new_datasets[0] if len(new_datasets) == 1 else new_datasets
+
+
+def fit_tokenizer(*datasets, text_col):
+    """ Fit the tokenizer based on text in several datasets.
+
+    Parameters
+    ----------
+    datasets: pd.DataFrames,
+        The datasets to tokenize. An arbitrary number of datasets can be processed at once.
+    text_col: str
+        The name of the column in the datasets that holds the text.
+
+    Returns
+    -------
+    tokenizer: keras.preprocessing.text.Tokenizer object,
+        The fitted Tokenizer instance.
+    """
+    tokenizer = Tokenizer(filters="", lower=False, split=" ")
+    print("Fitting tokenizer on all datasets..")
+    tokenizer.fit_on_texts(np.concatenate([data[text_col].values for data in datasets]))
+
+    return tokenizer
+
+
+def tokenize_and_pad(tokenizer, *datasets, text_col, id_col, max_words=72):
+    """ Tokenize text in several datasets and pad to make every vector the same length.
+
+    Parameters
+    ----------
+    tokenizer: keras.preprocessing.text.Tokenizer object,
+        The fitted tokenizer instance to use.
+    datasets: pd.DataFrames,
+        The datasets to tokenize. An arbitrary number of datasets can be processed at once.
+    text_col: str,
+        The name of the column in the datasets that holds the text.
+    id_col: str,
+        The name of the column in the datasets that holds the identifyer.
+    max_words: int, optional (default: 72)
+        The maximum number of words to use per document.
+
+    Returns
+    -------
+    tokenized_datasets: tuple of np.arrays,
+        The tokenized and padded datasets.
+    """
+    print("Tokenizing the datasets..")
+    results = [pd.DataFrame(np.zeros((len(d), max_words)), index=d[id_col]) for d in datasets]
+
+    for i in range(len(datasets)):
+        arr = tokenizer.texts_to_sequences(datasets[i][text_col])
+        results[i].loc[:, :] = pad_sequences(arr, maxlen=max_words)
+
+    return results
