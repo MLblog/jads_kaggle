@@ -7,7 +7,7 @@ from keras.models import Model
 from sklearn.model_selection import StratifiedKFold
 from sklearn import utils
 
-from common.nlp.sequence_models_elements import Capsule, DropConnect, Attention
+from common.nn.elements import Capsule, DropConnect, Attention
 
 
 def classify_based_on_probs(predictions, boundary=0.2):
