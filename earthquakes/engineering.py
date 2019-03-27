@@ -34,25 +34,25 @@ def sequence_generator(data, xcol="acoustic_data", ycol="time_to_failure", size=
 
 
 def autocorr_length(x):
-                x_mean = x.mean()
-                x_std = x.std()
-                acf = []
-                for rx in range(100):
-                    ac = 0
-                    for k in range(100-rx):
-                        ac = ac + (x[k] - x_mean) * (x[k+rx] - x_mean)
-                    acf.append(ac / (100 - rx))
+    x_mean = x.mean()
+    x_std = x.std()
+    acf = []
+    for rx in range(100):
+        ac = 0
+        for k in range(100-rx):
+            ac = ac + (x[k] - x_mean) * (x[k+rx] - x_mean)
+        acf.append(ac / (100 - rx))
 
-                z2 = np.array(acf) / (x_std**2)
+    z2 = np.array(acf) / (x_std**2)
 
-                def find_y_point(xa, xb, ya, yb, yc):
-                    m = (ya - yb) / (xa - xb)
-                    xc = yc / m - yb / m + xb
-                    return xc
+    def find_y_point(xa, xb, ya, yb, yc):
+        m = (ya - yb) / (xa - xb)
+        xc = yc / m - yb / m + xb
+        return xc
 
-                x1 = np.where(z2[0:50] == z2[0:50][z2[0:50] < 0.36][0])[0][0] - 1
-                x2 = np.where(z2[0:50] == z2[0:50][z2[0:50] < 0.36][0])[0][0]
-                return find_y_point(x1, x2, z2[0:50][x1], z2[0:50][x2], 0.368)
+    x1 = np.where(z2[0:50] == z2[0:50][z2[0:50] < 0.36][0])[0][0] - 1
+    x2 = np.where(z2[0:50] == z2[0:50][z2[0:50] < 0.36][0])[0][0]
+    return find_y_point(x1, x2, z2[0:50][x1], z2[0:50][x2], 0.368)
 
 
 class FeatureComputer():
