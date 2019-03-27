@@ -34,30 +34,28 @@ def sequence_generator(data, xcol="acoustic_data", ycol="time_to_failure", size=
             x = data[idx:(idx + size)][xcol].values
             yield x, y
 
+
 def autocorr_length(x):
-                l=len(x)
-                x_mean=x.mean()
-                x_std=x.std()
-                rxx=[]
-                acf=[]
+                x_mean = x.mean()
+                x_std = x.std()
+                acf = []
                 for rx in range(100):
-                    ac=0
-                    #print(rx)
+                    ac = 0
                     for k in range(100-rx):
-                        ac=ac+(x[k]-x_mean)*(x[k+rx]-x_mean)
+                        ac = ac+(x[k]-x_mean)*(x[k+rx]-x_mean)
                     acf.append(ac/(100-rx))
-        
-                z2=np.array(acf)/(x_std**2)   
-    
-            
-                def findYPoint(xa,xb,ya,yb,yc):
+
+                z2 = np.array(acf) / (x_std**2)
+
+                def find_y_point(xa, xb, ya, yb, yc):
                     m = (ya - yb) / (xa - xb)
-                    xc= yc/m - yb/m +xb  
+                    xc = yc / m - yb / m + xb
                     return xc
 
-                x1=np.where(z2[0:50]==z2[0:50][z2[0:50]<0.36][0])[0][0]-1
-                x2=np.where(z2[0:50]==z2[0:50][z2[0:50]<0.36][0])[0][0]
-                return findYPoint(x1,x2,z2[0:50][x1],z2[0:50][x2],0.368)           
+                x1 = np.where(z2[0:50] == z2[0:50][z2[0:50] < 0.36][0])[0][0] - 1
+                x2 = np.where(z2[0:50] == z2[0:50][z2[0:50] < 0.36][0])[0][0]
+                return find_y_point(x1, x2, z2[0:50][x1], z2[0:50][x2], 0.368)
+
 
 class FeatureComputer():
     """Class that computes features over a given array of observations.
@@ -131,13 +129,13 @@ class FeatureComputer():
     """
     feats = ["minimum", "maximum", "mean", "median", "std", "abs_min", "abs_max", "abs_mean",
              "abs_median", "abs_std", "mean_abs_delta", "mean_rel_delta", "max_to_min", "abs_trend",
-             "mad", "skew", "abs_skew", "kurtosis", "abs_kurtosis", "hilbert", "hann","corr_length"]
+             "mad", "skew", "abs_skew", "kurtosis", "abs_kurtosis", "hilbert", "hann", "corr_length"]
 
     def __init__(self, minimum=True, maximum=True, mean=True, median=True, std=True, quantiles=None,
                  abs_min=True, abs_max=True, abs_mean=True, abs_median=True, abs_std=True, abs_quantiles=None,
                  mean_abs_delta=True, mean_rel_delta=True, max_to_min=True, count_abs_big=None,
                  abs_trend=True, mad=True, skew=True, abs_skew=True, kurtosis=True, abs_kurtosis=True,
-                 hilbert=True, hann=True,corr_length=True, stalta=None, stalta_window=None, exp_mov_ave=None, exp_mov_ave_window=None,
+                 hilbert=True, hann=True, corr_length=True, stalta=None, stalta_window=None, exp_mov_ave=None, exp_mov_ave_window=None,
                  window=None, array_length=150000):
 
         self.minimum = minimum
@@ -161,7 +159,7 @@ class FeatureComputer():
         self.abs_kurtosis = abs_kurtosis
         self.hilbert = hilbert
         self.hann = hann
-        self.corr_length=corr_length
+        self.corr_length = corr_length
 
         if quantiles is None:
             self.quantiles = []
@@ -223,7 +221,7 @@ class FeatureComputer():
                                       self.abs_min, self.abs_max, self.abs_mean, self.abs_median,
                                       self.abs_std, self.mean_abs_delta, self.mean_rel_delta,
                                       self.max_to_min, self.abs_trend, self.mad, self.skew, self.abs_skew,
-                                      self.kurtosis, self.abs_kurtosis, self.hilbert, self.hann,self.corr_length]]
+                                      self.kurtosis, self.abs_kurtosis, self.hilbert, self.hann, self.corr_length]]
         names = names.tolist() + quantile_names + abs_quantile_names + count_abs_big_names
 
         if self.window is not None:
@@ -326,7 +324,7 @@ class FeatureComputer():
             result[i] = np.mean(signal.convolve(arr, signal.hann(150), mode='same') / np.sum(signal.hann(150)))
             i += 1
         if self.corr_length:
-            result[i]=autocorr_length(pd.Series(arr).reset_index(drop=True))
+            result[i] = autocorr_length(pd.Series(arr).reset_index(drop=True))
             i += 1
         if self.quantiles is not None:
             result[i:i + len(self.quantiles)] = np.quantile(arr, q=self.quantiles)
