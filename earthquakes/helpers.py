@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 from scipy import signal
+from scipy import stats
+import matplotlib.pyplot as plt
 import os
 import math
 from tqdm import tqdm
@@ -190,7 +192,6 @@ def create_signal_dataset(caller_cl, xcol="acoustic_data", ycol="time_to_failure
     for i, idx in enumerate(tqdm(indices)):
         data = caller_cl.get_intervals(i_init=idx,
                                        window_size=window_size)
-
         y = data[ycol].values[-1:]
         x = data[xcol].values
         new_data[i, :] = x
@@ -201,3 +202,77 @@ def create_signal_dataset(caller_cl, xcol="acoustic_data", ycol="time_to_failure
     new_data[ycol] = targets
     new_data.index = target_id
     return new_data
+
+
+def check_distributions_train_test(x_train, x_test, n_col=4, alpha=0.05, **kwars):
+    """Check if the Ys on the train and test sets
+    are from the same distributions using Kolmogorov-Smirnov test.
+    
+    Paramaters
+    ----------
+    x_train: pd.DataFrame
+        The data with the features of the train set
+    x_test: pd.DataFrame
+        The data with the features of the test set 
+    n_col = int (default 4)
+        number of columns for the grid plot
+    alpha: float (default 0.05)
+        related with the level of confidence for the
+        statistical test. Confidence = 1 - alpha
+    **kwars: dict
+        parameters for the hist
+    """
+
+    def twoSampleKS(x1, x2):
+        """Compute the Kolmogorov-Smirnov statistic on 2 samples.
+        More information at:
+
+        https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html
+
+        Parameters
+        ----------
+        X1, X2: 1-D array
+            two arrays of sample observations assumed to be drawn from a continuous 
+            distribution, sample sizes can be different
+
+        """
+        _, p_value = stats.ks_2samp(x1, x2)
+        if p_value <= alpha:
+            return 'Not Same Dist'
+        else:
+            return 'Same Dist'
+
+    names = list(x_train.columns)
+    n_rows = math.ceil(len(names)/n_col) #number of rows
+    pos = 0
+    fig, axes = plt.subplots(n_rows, n_col, figsize=(15,15))
+    plt.subplots_adjust(hspace=0.4)
+    for i in range(n_rows):
+        for j in range(n_col):
+            if pos >= len(names):
+                axes[i, j].spines['top'].set_visible(False)
+                axes[i, j].spines['right'].set_visible(False)
+                axes[i, j].spines['left'].set_visible(False)
+                axes[i, j].spines['bottom'].set_visible(False)
+                axes[i, j].set_xticks([])
+                axes[i, j].set_yticks([])
+            else:
+                test = x_test.values[:, pos]
+                train = x_train.values[:, pos]
+                hypothesis = twoSampleKS(test, test)
+                title = names[pos] + ": " + hypothesis
+                if pos==0:
+                    freq_p, _, _ = axes[i, j].hist(train, alpha=0.5, color = '#ca0020', label='train', **kwars)
+                    freq_y, _, _ = axes[i, j].hist(test, alpha=0.5, color='#2c7bb6', label='test', **kwars)
+                else:
+                    freq_p, _, _ = axes[i, j].hist(train, alpha=0.5, label=None, color='#ca0020', **kwars) 
+                    freq_y, _, _ = axes[i, j].hist(test, alpha=0.5, label=None, color='#2c7bb6', **kwars)
+
+                axes[i, j].set_title(title, fontsize=10)
+                axes[i, j].spines['top'].set_visible(False)
+                axes[i, j].spines['right'].set_visible(False)
+                pos += 1
+
+    fig.legend(loc = 'center right')
+    fig.suptitle("Test distributions (" + r'$\alpha$=' + '{})'.format(alpha), fontsize=15, y=0.92)
+    fig.text(0.08, 0.5, 'Frequency (normalized)', va='center', rotation='vertical', fontsize=15)
