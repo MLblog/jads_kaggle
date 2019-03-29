@@ -1,11 +1,10 @@
 import numpy as np
 
-import keras
-from keras.models import Sequential, Model
-from keras.layers import Dense, Conv1D, Flatten, Dropout, LSTM
 from keras.preprocessing.sequence import TimeseriesGenerator
 
 from earthquakes.engineering import get_cycle
+from common.utils import progress
+
 
 class Scaler():
     """Class that takes care of scaling the data in various ways.
@@ -52,6 +51,18 @@ class Scaler():
         self.fitted = True
 
     def scale(self, arr):
+        """Scale the data according to the specified method and parameters.
+
+        Parameters
+        ----------
+        arr: array-like
+            The input array.
+
+        Returns
+        -------
+        scaled_array: np.array
+            The scaled array.
+        """
         if self.method == "log":
             return np.log(np.asarray(arr) + self.C)
         if self.method == "standard":
@@ -94,6 +105,11 @@ def train_on_cycles(model, epochs=5, batch_size=32, cycle_nrs=None, scaler=None,
         xcol="acoustic_data", ycol="time_to_failure".
     data_dir: str, optional, default="../data"
         The directory that holds the cycle data.
+
+    Returns
+    -------
+    trained_model: keras.models.Model
+        The trained model.
     """
     if cycle_nrs is None:
         cycle_nrs = range(17)
@@ -138,6 +154,12 @@ def evaluate_on_cycles(model, cycle_nrs=None, scaler=None, sequence_length=15000
         xcol="acoustic_data", ycol="time_to_failure".
     data_dir: str, optional, default="../data"
         The directory that holds the cycle data.
+
+    Returns
+    -------
+    tuple of (weighted_loss, losses, weights):
+        weighted_loss: float
+            The total loss weighted over the cycle
     """
     losses, weights = [], []
     for nr in cycle_nrs:
@@ -181,6 +203,12 @@ class KFoldCycles():
         ----------
         n_cycles: int, optional, default=17
             The number of cycles that are available in total.
+
+        Returns
+        -------
+        Tuples of (train_cycles, test_cycles), where train_cycles and test_cycles are
+        lists of integers in [0, n_cycles). Can be used directly for input to `train_on_cycles`
+        and `evaluate_on_cycles`.
         """
         cycles = np.arange(n_cycles)
         if self.shuffle:
