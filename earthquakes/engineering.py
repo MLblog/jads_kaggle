@@ -8,6 +8,7 @@ from obspy.signal.trigger import classic_sta_lta
 
 def sequence_generator(data, xcol="acoustic_data", ycol="time_to_failure", size=150000):
     """Generator that extracts segments of the signal from the data.
+
     Parameters
     ----------
     data: pd.DataFrame,
@@ -20,6 +21,7 @@ def sequence_generator(data, xcol="acoustic_data", ycol="time_to_failure", size=
     size: int, optional (default: 150,000),
         The number of observations to include in a single sequence. Should be left at
         its default to generate sequences similar to the test data.
+
     Returns
     -------
     A generator object that generates tuples like:
@@ -33,32 +35,12 @@ def sequence_generator(data, xcol="acoustic_data", ycol="time_to_failure", size=
             yield x, y
 
 
-def autocorr_length(x):
-    x_mean = x.mean()
-    x_std = x.std()
-    acf = []
-    for rx in range(100):
-        ac = 0
-        for k in range(100-rx):
-            ac = ac + (x[k] - x_mean) * (x[k+rx] - x_mean)
-        acf.append(ac / (100 - rx))
-
-    z2 = np.array(acf) / (x_std**2)
-
-    def find_y_point(xa, xb, ya, yb, yc):
-        m = (ya - yb) / (xa - xb)
-        xc = yc / m - yb / m + xb
-        return xc
-
-    x1 = np.where(z2[0:50] == z2[0:50][z2[0:50] < 0.36][0])[0][0] - 1
-    x2 = np.where(z2[0:50] == z2[0:50][z2[0:50] < 0.36][0])[0][0]
-    return find_y_point(x1, x2, z2[0:50][x1], z2[0:50][x2], 0.368)
-
-
 class FeatureComputer():
     """Class that computes features over a given array of observations.
+
     This is done in a class so that it can be initialized once and can then be used throughout the
     train-validate-test sequence without specifying all the parameters everytime.
+
     Parameters
     ----------
     minimum, maximum, mean, median, std: boolean, optional (default: True),
@@ -113,6 +95,7 @@ class FeatureComputer():
         If given, calculates the features over subsequences of size 'window'.
     array_length: int, optional (default: 150000),
         The array length to expect. Only needed if window is not None.
+
     Returns
     -------
     result: np.array,
@@ -245,6 +228,33 @@ class FeatureComputer():
 
             return np.concatenate([values, overall_values])
 
+    def _autocorr_length(self, x, num_of_points=80):
+        """Calculates the correlation length in the
+        the first "num_of_points" of the autocorrelation function of the x signal.
+        correlation length indicates if theere is any correlation between the points of the signal
+        low correlation values indicate a very random hight sequence, while
+        high correaltion excactly the opposite
+        """
+        x_mean = x.mean()
+        x_std = x.std()
+        acf = []
+        for rx in range(num_of_points):
+            ac = 0
+            for k in range(num_of_points-rx):
+                ac = ac + (x[k] - x_mean) * (x[k+rx] - x_mean)
+            acf.append(ac / (num_of_points - rx))
+
+        z2 = np.array(acf) / (x_std**2)
+
+        def find_y_point(xa, xb, ya, yb, yc):
+            m = (ya - yb) / (xa - xb)
+            xc = yc / m - yb / m + xb
+            return xc
+
+        x1 = np.where(z2[0:num_of_points] == z2[0:num_of_points][z2[0:num_of_points] < 0.368][0])[0][0] - 1
+        x2 = np.where(z2[0:num_of_points] == z2[0:num_of_points][z2[0:num_of_points] < 0.368][0])[0][0]
+        return find_y_point(x1, x2, z2[0:num_of_points][x1], z2[0:num_of_points][x2], 0.368)
+
     def _compute_features(self, arr, window=False):
         if window:
             result = np.zeros_like(self.result_template_window)
@@ -318,7 +328,7 @@ class FeatureComputer():
             result[i] = np.mean(signal.convolve(arr, signal.hann(150), mode='same') / np.sum(signal.hann(150)))
             i += 1
         if self.corr_length:
-            result[i] = autocorr_length(pd.Series(arr).reset_index(drop=True))
+            result[i] = self._autocorr_length(pd.Series(arr).reset_index(drop=True))
             i += 1
         if self.quantiles is not None:
             result[i:i + len(self.quantiles)] = np.quantile(arr, q=self.quantiles)
@@ -355,6 +365,7 @@ def create_feature_dataset(data, feature_computer, xcol="acoustic_data", ycol="t
                            stft=False, stft_feature_computer=None):
     """Samples sequences from the data, computes features for each sequence, and stores the result
     in a new dataframe.
+
     Parameters
     ----------
     data: pd.DataFrame,
@@ -374,6 +385,7 @@ def create_feature_dataset(data, feature_computer, xcol="acoustic_data", ycol="t
         Whether to calculate the Short Time Fourier Transform.
     stft_feature_computer: FeatureComputer object or None,
         The computer for stft features.
+
     Returns
     -------
     feature_data: pd.DataFrame,
