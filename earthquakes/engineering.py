@@ -101,6 +101,7 @@ class FeatureComputer():
     result: np.array,
         The specified features of the given array.
     Notes
+
     -----
     In order to see which value in the result refers to which feature, see 'self.feature_names'.
     """
