@@ -204,11 +204,11 @@ def create_signal_dataset(caller_cl, xcol="acoustic_data", ycol="time_to_failure
     return new_data
 
 
-def check_distributions_train_test(x_train, x_test, n_col=4, alpha=0.05, **kwars):
+def check_distributions_train_test(x_train, x_test, n_col=4, alpha=0.05, **kwargs):
     """Check if the Ys on the train and test sets
     are from the same distributions using Kolmogorov-Smirnov test.
 
-    Paramaters
+    Parameters
     ----------
     x_train: pd.DataFrame
         The data with the features of the train set
@@ -223,7 +223,7 @@ def check_distributions_train_test(x_train, x_test, n_col=4, alpha=0.05, **kwars
         parameters for the hist
     """
 
-    def twoSampleKS(x1, x2):
+    def twoSampleKS(x1, x2, alpha):
         """Compute the Kolmogorov-Smirnov statistic on 2 samples.
         More information at:
 
@@ -238,9 +238,9 @@ def check_distributions_train_test(x_train, x_test, n_col=4, alpha=0.05, **kwars
         """
         _, p_value = stats.ks_2samp(x1, x2)
         if p_value <= alpha:
-            return 'Not Same Dist'
+            return 'Not Same Dist', p_value
         else:
-            return 'Same Dist'
+            return 'Same Dist', p_value
 
     names = list(x_train.columns)
     n_rows = math.ceil(len(names)/n_col)  # number of rows
@@ -259,14 +259,14 @@ def check_distributions_train_test(x_train, x_test, n_col=4, alpha=0.05, **kwars
             else:
                 test = x_test.values[:, pos]
                 train = x_train.values[:, pos]
-                hypothesis = twoSampleKS(test, test)
+                hypothesis, _ = twoSampleKS(test, train, alpha)
                 title = names[pos] + ": " + hypothesis  # noqa
                 if pos == 0:
-                    freq_p, _, _ = axes[i, j].hist(train, alpha=0.5, color='#ca0020', label='train', **kwars)
-                    freq_y, _, _ = axes[i, j].hist(test, alpha=0.5, color='#2c7bb6', label='test', **kwars)
+                    axes[i, j].hist(train, alpha=0.5, color='#ca0020', label='train', **kwargs)
+                    axes[i, j].hist(test, alpha=0.5, color='#2c7bb6', label='test', **kwargs)
                 else:
-                    freq_p, _, _ = axes[i, j].hist(train, alpha=0.5, label=None, color='#ca0020', **kwars)
-                    freq_y, _, _ = axes[i, j].hist(test, alpha=0.5, label=None, color='#2c7bb6', **kwars)
+                    axes[i, j].hist(train, alpha=0.5, label=None, color='#ca0020', **kwargs)
+                    axes[i, j].hist(test, alpha=0.5, label=None, color='#2c7bb6', **kwargs)
 
                 axes[i, j].set_title(title, fontsize=10)
                 axes[i, j].spines['top'].set_visible(False)
