@@ -1,9 +1,87 @@
+import os
+import gc
 import numpy as np
 import pandas as pd
+import pickle
 
 from scipy import signal, stats
 from sklearn.linear_model import LinearRegression
 from obspy.signal.trigger import classic_sta_lta
+
+from common.utils import progress
+
+
+def find_earthquakes(data, ycol="time_to_failure", chunks=3):
+    """Find the indices at which an earthquake occurs.
+
+    Note, the returned indices indicate the location of the first observation
+    that is part of a new cycle. This means it can be used directly for indexing
+    to obtain the exact cycles.
+
+    data: pd.DataFrame
+        The earthquake training data.
+    ycol: str, optional, default="time_to_failure"
+        The column representing the time until the next failure.
+    chunks: int, optional, default=3
+        In how many chunks the earthquakes should be found in order to prevent
+        memory issues. If the default (3) still leads to problems, try increasing this.
+    """
+    chunk_size = len(data) / chunks
+    chunk_indices = [int(chunk_size*i) for i in range(chunks)] + [len(data)]
+
+    all_indices = []
+    for i in range(chunks):
+        progress("Finding earthquakes in chunk {}/{}".format(i + 1, chunks))
+        subset = data[ycol].iloc[chunk_indices[i]:chunk_indices[i+1]]
+        indices = np.asarray(subset.diff() > 0).nonzero()
+        indices = np.array(indices) + i * chunk_size
+        all_indices = np.append(all_indices, indices)
+        del subset
+        gc.collect()
+
+    return np.sort([int(x) for x in all_indices])
+
+
+def save_earthquake_cycles(data, xcol="acoustic_data", ycol="time_to_failure", data_dir="../data"):
+    """Save the training data as chunks representing one cycle (earthquake to earthquake).
+
+    Parameters
+    ----------
+    data: pd.DataFrame,
+        The data with all observations. Must have two columns: one with the measurement
+        of the signal and one with the target, i.e., time to the next earthquake.
+    xcol: str, optional, default: "acoustic_data"
+        The column referring to the the signal data.
+    ycol: str, optional, default: "time_to_failure"
+        The column referring to the target value.
+    data_dir: str
+        Where to save the files.
+    """
+    progress("Finding earthquake locations..")
+    indx = find_earthquakes(data, ycol=ycol)
+    indx = np.insert(indx, 0, [0])
+    indx = np.append(indx, len(data))
+    for i in range(len(indx) - 1):
+        cycle = data.iloc[indx[i]:indx[i + 1], :]
+        cycle.to_pickle(os.path.join(data_dir, "earthquake_{}.pkl".format(i)))
+        progress("Cycle {} saved.".format(i))
+
+
+def get_cycle(cycle_nr, xcol="acoustic_data", ycol="time_to_failure", data_dir="../data"):
+    """Load one earthquake cycle from disk.
+
+    cycle_nr: int
+        The number of the earthquake you want to load.
+    xcol, ycol: str, optional
+        The column names of the signal (xcol) and target (ycol). Default to
+        xcol="acoustic_data", ycol="time_to_failure".
+    data_dir: str, optional, default='../data'
+        The directory where the earthquake cycles are stored.
+    """
+    train = pickle.load(open(os.path.join(data_dir, "earthquake_{}.pkl".format(cycle_nr)), "rb"))
+    train_x = train[xcol].values.reshape((len(train), 1))
+    train_y = train[ycol].values.reshape((len(train), 1))
+    return train_x, train_y
 
 
 def sequence_generator(data, xcol="acoustic_data", ycol="time_to_failure", size=150000):
