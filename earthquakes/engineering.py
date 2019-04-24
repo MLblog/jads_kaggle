@@ -155,6 +155,8 @@ class FeatureComputer():
         Whether to calculate the abs mean in hilbert tranformed space.
     hann: boolean, optional (default: True),
         Whether to calculate the abs mean in hann window.
+    corr_length: boolean, optional (default: True),
+        Whether to calculate the correlation length based on the first 100 points of autocorrelation  function.
     stalta: list of floats,
         The short time average and the long time average over which the short time
         average over long time average is calculated.
@@ -183,13 +185,13 @@ class FeatureComputer():
     """
     feats = ["minimum", "maximum", "mean", "median", "std", "abs_min", "abs_max", "abs_mean",
              "abs_median", "abs_std", "mean_abs_delta", "mean_rel_delta", "max_to_min", "abs_trend",
-             "mad", "skew", "abs_skew", "kurtosis", "abs_kurtosis", "hilbert", "hann"]
+             "mad", "skew", "abs_skew", "kurtosis", "abs_kurtosis", "hilbert", "hann", "corr_length"]
 
     def __init__(self, minimum=True, maximum=True, mean=True, median=True, std=True, quantiles=None,
                  abs_min=True, abs_max=True, abs_mean=True, abs_median=True, abs_std=True, abs_quantiles=None,
                  mean_abs_delta=True, mean_rel_delta=True, max_to_min=True, count_abs_big=None,
                  abs_trend=True, mad=True, skew=True, abs_skew=True, kurtosis=True, abs_kurtosis=True,
-                 hilbert=True, hann=True, stalta=None, stalta_window=None, exp_mov_ave=None, exp_mov_ave_window=None,
+                 hilbert=True, hann=True, corr_length=True, stalta=None, stalta_window=None, exp_mov_ave=None, exp_mov_ave_window=None,
                  window=None, array_length=150000):
 
         self.minimum = minimum
@@ -213,6 +215,7 @@ class FeatureComputer():
         self.abs_kurtosis = abs_kurtosis
         self.hilbert = hilbert
         self.hann = hann
+        self.corr_length = corr_length
 
         if quantiles is None:
             self.quantiles = []
@@ -274,7 +277,7 @@ class FeatureComputer():
                                       self.abs_min, self.abs_max, self.abs_mean, self.abs_median,
                                       self.abs_std, self.mean_abs_delta, self.mean_rel_delta,
                                       self.max_to_min, self.abs_trend, self.mad, self.skew, self.abs_skew,
-                                      self.kurtosis, self.abs_kurtosis, self.hilbert, self.hann]]
+                                      self.kurtosis, self.abs_kurtosis, self.hilbert, self.hann, self.corr_length]]
         names = names.tolist() + quantile_names + abs_quantile_names + count_abs_big_names
 
         if self.window is not None:
@@ -303,6 +306,33 @@ class FeatureComputer():
             overall_values = self._compute_features(arr)
 
             return np.concatenate([values, overall_values])
+
+    def _autocorr_length(self, x, num_of_points=80):
+        """Calculates the correlation length in the
+        the first "num_of_points" of the autocorrelation function of the x signal.
+        correlation length indicates if theere is any correlation between the points of the signal
+        low correlation values indicate a very random hight sequence, while
+        high correaltion excactly the opposite
+        """
+        x_mean = x.mean()
+        x_std = x.std()
+        acf = []
+        for rx in range(num_of_points):
+            ac = 0
+            for k in range(num_of_points-rx):
+                ac = ac + (x[k] - x_mean) * (x[k+rx] - x_mean)
+            acf.append(ac / (num_of_points - rx))
+
+        z2 = np.array(acf) / (x_std**2)
+
+        def find_y_point(xa, xb, ya, yb, yc):
+            m = (ya - yb) / (xa - xb)
+            xc = yc / m - yb / m + xb
+            return xc
+
+        x1 = np.where(z2[0:num_of_points] == z2[0:num_of_points][z2[0:num_of_points] < 0.368][0])[0][0] - 1
+        x2 = np.where(z2[0:num_of_points] == z2[0:num_of_points][z2[0:num_of_points] < 0.368][0])[0][0]
+        return find_y_point(x1, x2, z2[0:num_of_points][x1], z2[0:num_of_points][x2], 0.368)
 
     def _compute_features(self, arr, window=False):
         if window:
@@ -375,6 +405,9 @@ class FeatureComputer():
             i += 1
         if self.hann:  # mean in hann window
             result[i] = np.mean(signal.convolve(arr, signal.hann(150), mode='same') / np.sum(signal.hann(150)))
+            i += 1
+        if self.corr_length:
+            result[i] = self._autocorr_length(pd.Series(arr).reset_index(drop=True))
             i += 1
         if self.quantiles is not None:
             result[i:i + len(self.quantiles)] = np.quantile(arr, q=self.quantiles)
