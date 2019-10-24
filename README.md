@@ -22,4 +22,7 @@ Information for each of them can be found in its respective directory.
 14. Antonios Stellas
 15. Max Ortega
 16. Charanya Chandrasekaran
-17. Daniela Miranda
+17. Juhi Chandra
+18. Lennart Damen
+19. Daniela Miranda
+
