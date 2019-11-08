@@ -123,6 +123,7 @@ def create_feature_dataset_source(caller_cl, feature_computer, xcol="acoustic_da
     indices = [events_id[0] + step * i for i in range(number_intervals)]
     if (events_id[1] - events_id[0]) % step != 0:
         indices.append(events_id[1])
+        number_intervals += 1
 
     if (stft is True) and (stft_feature_computer is None):
         assert feature_computer.window is None, ("If stft is True, feature_computer must have window=None or"
@@ -185,6 +186,7 @@ def create_signal_dataset(caller_cl, xcol="acoustic_data", ycol="time_to_failure
     indices = [events_id[0] + step * i for i in range(number_intervals)]
     if (events_id[1] - events_id[0]) % step != 0:
         indices.append(events_id[1])
+        number_intervals += 1
     new_data = np.zeros((len(indices), window_size))
     targets = np.zeros(number_intervals)
     target_id = np.zeros(number_intervals, dtype=int)
